@@ -3,99 +3,148 @@ import { NextRequest, NextResponse } from "next/server";
 import dbConnect from "@/lib/mongodb";
 import ServicesClient from "@/models/ServicesClient";
 import Task from "@/models/Task";
-import Service from "@/models/Service";
+
+
+// ========================================
+// GET
+// يستخدمه Vercel Cron تلقائيًا
+// ========================================
+
+export async function GET(request: NextRequest) {
+  return processServices();
+}
+
+
+// ========================================
+// POST
+// يستخدم للاختبار اليدوي فقط
+// ========================================
 
 export async function POST(request: NextRequest) {
+  return processServices();
+}
+
+
+// ========================================
+// معالجة الخدمات
+// ========================================
+
+async function processServices() {
   try {
     await dbConnect();
 
-    // ========================================
-    // الخدمات التي حان موعـدها
-    // ========================================
-const allServicesClients =
-  await ServicesClient.find({});
+    const now = new Date();
 
-console.log(
-  "🔥 ALL SERVICES CLIENTS COUNT:",
-  allServicesClients.length
-);
+    console.log("================================");
+    console.log("🔥 CRON / PROCESS STARTED");
+    console.log("🔥 NOW:", now);
+    console.log("================================");
 
-console.log(
-  "🔥 ALL SERVICES CLIENTS:",
-  allServicesClients
-);
+
+    // ========================================
+    // جلب الخدمات المستحقة
+    // ========================================
+
     const servicesClients =
       await ServicesClient.find({
         active: true,
         datePayement: {
-          $lte: new Date(),
+          $lte: now,
         },
       })
         .populate("service")
         .populate("client")
         .populate("paymentMethod");
-console.log("🔥 NOW:", new Date());
 
-console.log(
-  "🔥 SERVICES CLIENTS COUNT:",
-  servicesClients.length
-);
 
-console.log(
-  "🔥 SERVICES CLIENTS:",
-  servicesClients
-);
+    console.log(
+      "🔥 SERVICES CLIENTS COUNT:",
+      servicesClients.length
+    );
+
+
     const createdTasks = [];
+
 
     // ========================================
     // معالجة كل خدمة
     // ========================================
 
-   for (const servicesClient of servicesClients) {
-  console.log("================================");
-  console.log("ServicesClient ID:", servicesClient._id);
-  console.log("Client:", servicesClient.client);
-  console.log("Service:", servicesClient.service);
-  console.log("PaymentMethod:", servicesClient.paymentMethod);
-  console.log("Date:", servicesClient.datePayement);
-  console.log("Active:", servicesClient.active);
-  console.log("================================");
+    for (const servicesClient of servicesClients) {
 
-  const service = servicesClient.service;
+      console.log("================================");
+      console.log(
+        "🔥 ServicesClient ID:",
+        servicesClient._id
+      );
+      console.log(
+        "🔥 Date:",
+        servicesClient.datePayement
+      );
+      console.log(
+        "🔥 Active:",
+        servicesClient.active
+      );
+      console.log("================================");
 
-  if (!service) {
-    console.log(
-      "❌ SERVICE NOT FOUND FOR:",
-      servicesClient._id
-    );
 
-    continue;
-  }
+      const service = servicesClient.service;
+
+
+      // ========================================
+      // التأكد من وجود الخدمة
+      // ========================================
+
+      if (!service) {
+
+        console.log(
+          "❌ SERVICE NOT FOUND:",
+          servicesClient._id
+        );
+
+        continue;
+      }
+
 
       // ========================================
       // منع إنشاء Task مكررة
       // ========================================
 
-      const existingTask = await Task.findOne({
-        client: servicesClient.client,
-        service: service._id,
-        status: {
-          $in: ["nouvelle", "en_cours"],
-        },
-      });
+      const existingTask =
+        await Task.findOne({
+          client: servicesClient.client,
+          service: service._id,
+          status: {
+            $in: [
+              "nouvelle",
+              "en_cours",
+            ],
+          },
+        });
+
 
       if (existingTask) {
+
+        console.log(
+          "⚠️ TASK ALREADY EXISTS:",
+          existingTask._id
+        );
+
         continue;
       }
+
 
       // ========================================
       // إنشاء Task
       // ========================================
 
       const task = await Task.create({
-        client: servicesClient.client,
 
-        service: service._id,
+        client:
+          servicesClient.client,
+
+        service:
+          service._id,
 
         clientPrice:
           servicesClient.clientPrice,
@@ -106,7 +155,8 @@ console.log(
         createdBy:
           servicesClient.createdBy,
 
-        status: "nouvelle",
+        status:
+          "nouvelle",
 
         assignedAt:
           servicesClient.datePayement,
@@ -117,7 +167,8 @@ console.log(
         paymentMethod:
           servicesClient.paymentMethod?._id,
 
-        notes: "",
+        notes:
+          "",
 
         isRecurring:
           service.isRecurring,
@@ -135,64 +186,122 @@ console.log(
         lastExecution:
           servicesClient.datePayement,
 
-        nextExecution: null,
+        nextExecution:
+          null,
       });
+
 
       createdTasks.push(task);
 
+
+      console.log(
+        "✅ TASK CREATED:",
+        task._id
+      );
+
+
       // ========================================
-      // إذا كانت الخدمة دورية
-      // نحسب التاريخ القادم
+      // الخدمة الدورية
       // ========================================
 
       if (service.isRecurring) {
-        const nextDate = calculateNextDate(
-          servicesClient.datePayement,
-          service.recurrence
-        );
+
+        const nextDate =
+          calculateNextDate(
+            servicesClient.datePayement,
+            service.recurrence
+          );
+
 
         servicesClient.datePayement =
           nextDate;
 
+
         await servicesClient.save();
+
+
+        console.log(
+          "🔄 RECURRING SERVICE"
+        );
+
+        console.log(
+          "📅 NEXT DATE:",
+          nextDate
+        );
       }
 
+
       // ========================================
-      // إذا كانت غير دورية
-      // نعطل الخدمة
+      // الخدمة غير الدورية
       // ========================================
 
       else {
-        servicesClient.active = false;
+
+        servicesClient.active =
+          false;
+
 
         await servicesClient.save();
+
+
+        console.log(
+          "⛔ ONE TIME SERVICE DISABLED"
+        );
       }
     }
 
+
+    // ========================================
+    // النتيجة
+    // ========================================
+
+    console.log("================================");
+    console.log(
+      "✅ PROCESS FINISHED"
+    );
+    console.log(
+      "✅ CREATED TASKS:",
+      createdTasks.length
+    );
+    console.log("================================");
+
+
     return NextResponse.json({
+
       success: true,
 
       message:
         "Traitement terminé avec succès",
 
       createdTasks,
+
     });
 
+
   } catch (error) {
+
     console.error(
-      "POST /api/services-client/process error:",
+      "❌ PROCESS ERROR:",
       error
     );
 
+
     return NextResponse.json(
+
       {
         success: false,
-        message: "Erreur serveur",
+
+        message:
+          "Erreur serveur",
       },
-      { status: 500 }
+
+      {
+        status: 500,
+      }
     );
   }
 }
+
 
 // ========================================
 // حساب التاريخ القادم
@@ -202,36 +311,54 @@ function calculateNextDate(
   currentDate: Date,
   recurrence: string | null
 ) {
-  const date = new Date(currentDate);
+
+  const date =
+    new Date(currentDate);
+
 
   switch (recurrence) {
+
     case "mensuel":
+
       date.setUTCMonth(
         date.getUTCMonth() + 1
       );
+
       break;
 
+
     case "trimestriel":
+
       date.setUTCMonth(
         date.getUTCMonth() + 3
       );
+
       break;
 
+
     case "semestriel":
+
       date.setUTCMonth(
         date.getUTCMonth() + 6
       );
+
       break;
 
+
     case "annuel":
+
       date.setUTCFullYear(
         date.getUTCFullYear() + 1
       );
+
       break;
 
+
     default:
+
       return currentDate;
   }
+
 
   return date;
 }
