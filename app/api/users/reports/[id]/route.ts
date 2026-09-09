@@ -11,7 +11,7 @@ export async function GET(
   try {
     await dbConnect();
 
-    const currentUser = getCurrentUser(request);
+  const currentUser = await getCurrentUser(request);
 
     if (!currentUser || currentUser.role !== "admin") {
       return NextResponse.json(

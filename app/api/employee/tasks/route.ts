@@ -11,7 +11,7 @@ export async function POST(request: NextRequest) {
   try {
     await dbConnect();
 console.log("Cookies:", request.cookies.getAll());
-    const user = getCurrentUser(request);
+    const user = await getCurrentUser(request);
 
     
 
