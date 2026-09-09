@@ -69,6 +69,8 @@ export async function POST() {
 
             createdBy: task.createdBy,
 
+              paymentMethod: task.paymentMethod,
+
             dueDate: executionDate,
 
             status: "nouvelle",

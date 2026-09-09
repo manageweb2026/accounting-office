@@ -41,6 +41,7 @@ const ServiceSchema = new Schema(
         "trimestriel",
         "semestriel",
         "annuel",
+        "ponctuel",
       ],
       default: null,
     },

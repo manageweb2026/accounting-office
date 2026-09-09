@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import dbConnect from "@/lib/mongodb";
 import Task from "@/models/Task";
-
+import Client from "@/models/Client";
 import { getCurrentUser } from "@/lib/auth";
 
 export async function POST(request: NextRequest) {
@@ -22,50 +22,94 @@ export async function POST(request: NextRequest) {
       );
     }
 
-   // إذا استقبلنا عدة خدمات
-if (body.services && Array.isArray(body.services)) {
+    // ==============================
+    // Vérifier le client
+    // ==============================
 
-  const tasks = body.services.map((service: any) => ({
+    const client = await Client.findById(body.client);
 
-    client: body.client,
+    if (!client) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: "Client introuvable",
+        },
+        { status: 400 }
+      );
+    }
 
-    service: service._id,
+    // ==============================
+    // Vérifier le mode de paiement
+    // ==============================
 
-    clientPrice: service.clientPrice,
+    if (!body.paymentMethod) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: "Mode de paiement obligatoire",
+        },
+        { status: 400 }
+      );
+    }
 
-    employeePrice: service.employeePrice,
+    // ==============================
+    // Plusieurs services
+    // ==============================
 
-    dueDate: body.dueDate,
+    if (body.services && Array.isArray(body.services)) {
+      if (body.services.length === 0) {
+        return NextResponse.json(
+          {
+            success: false,
+            message: "Aucun service sélectionné",
+          },
+          { status: 400 }
+        );
+      }
 
-    notes: body.notes,
+      const tasks = body.services.map((service: any) => ({
+        client: body.client,
 
-    createdBy: user.id,
+        service: service._id,
 
-    status: "nouvelle",
+        clientPrice: service.clientPrice,
 
-  }));
+        employeePrice: service.employeePrice,
 
-  const createdTasks = await Task.insertMany(tasks);
+        paymentMethod: body.paymentMethod,
 
-  return NextResponse.json({
-    success: true,
-    tasks: createdTasks,
-  });
-}
+        dueDate: body.dueDate,
 
-// إنشاء مهمة واحدة (الطريقة القديمة)
-const task = await Task.create({
-  ...body,
-  createdBy: user.id,
-});
+        notes: body.notes || "",
 
-return NextResponse.json({
-  success: true,
-  task,
-});
+        createdBy: user.id,
 
+        status: "nouvelle",
+      }));
+
+      const createdTasks = await Task.insertMany(tasks);
+
+      return NextResponse.json({
+        success: true,
+        tasks: createdTasks,
+      });
+    }
+
+    // ==============================
+    // Une seule tâche
+    // ==============================
+
+    const task = await Task.create({
+      ...body,
+      createdBy: user.id,
+    });
+
+    return NextResponse.json({
+      success: true,
+      task,
+    });
   } catch (error) {
-    console.error(error);
+    console.error("POST /api/tasks error:", error);
 
     return NextResponse.json(
       {
@@ -84,15 +128,16 @@ export async function GET() {
     const tasks = await Task.find()
       .populate("client", "firstName lastName")
       .populate("service", "name")
+      .populate("employee", "firstName lastName")
+      .populate("paymentMethod", "name")
       .sort({ createdAt: -1 });
 
     return NextResponse.json({
       success: true,
       tasks,
     });
-
   } catch (error) {
-    console.error(error);
+    console.error("GET /api/tasks error:", error);
 
     return NextResponse.json(
       {

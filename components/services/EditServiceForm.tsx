@@ -86,13 +86,13 @@ export default function EditServiceForm({
         return;
       }
 
-     toast.success("تم تعديل الخدمة بنجاح");
+     toast.success("la modification du service a ete faite avec succes");
 
       onSuccess?.();
 
     } catch (error) {
       console.error(error);
-      toast.error("حدث خطأ أثناء حفظ البيانات");
+      toast.error("la modification du service a echoue");
     }
   }
   return (
@@ -104,11 +104,11 @@ export default function EditServiceForm({
       <div>
 
         <label className="block mb-2 font-medium">
-          اسم الخدمة
+          nom de sevice
         </label>
 
         <Input
-          placeholder="مثال: TVA"
+          placeholder="..."
           {...register("name")}
         />
 
@@ -123,11 +123,11 @@ export default function EditServiceForm({
       <div>
 
         <label className="block mb-2 font-medium">
-          الوصف
+          description de service
         </label>
 
         <Input
-          placeholder="وصف الخدمة"
+          placeholder=""
           {...register("description")}
         />
 
@@ -183,7 +183,7 @@ export default function EditServiceForm({
           }
         />
 
-        <label>الخدمة مفعلة</label>
+        <label>service active</label>
 
       </div>
 

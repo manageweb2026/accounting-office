@@ -1,41 +1,63 @@
+import { MongoClient } from "mongodb";
 import mongoose from "mongoose";
 
-const MONGODB_URI = process.env.MONGODB_URI;
+const uri = process.env.MONGODB_URI;
 
-if (!MONGODB_URI) {
-  throw new Error("Please define the MONGODB_URI environment variable");
+if (!uri) {
+  throw new Error("MONGODB_URI n'est pas défini dans .env.local");
 }
 
-let cached = (global as typeof globalThis & {
-  mongoose?: {
-    conn: typeof mongoose | null;
-    promise: Promise<typeof mongoose> | null;
-  };
-}).mongoose;
+const mongoUri: string = uri;
 
-if (!cached) {
-  cached = {
-    conn: null,
-    promise: null,
-  };
+const mongoOptions = {
+  maxPoolSize: 10,
+  serverSelectionTimeoutMS: 10000,
+  connectTimeoutMS: 10000,
+};
 
-  (global as typeof globalThis & {
-    mongoose?: typeof cached;
-  }).mongoose = cached;
+/* =========================================
+   MongoDB Native Client
+   يستخدمه Better Auth
+========================================= */
+
+const globalForMongo = globalThis as typeof globalThis & {
+  mongoClientPromise?: Promise<MongoClient>;
+};
+
+let clientPromise: Promise<MongoClient>;
+
+if (process.env.NODE_ENV === "development") {
+  if (!globalForMongo.mongoClientPromise) {
+    const client = new MongoClient(mongoUri, mongoOptions);
+
+    globalForMongo.mongoClientPromise = client.connect();
+  }
+
+  clientPromise = globalForMongo.mongoClientPromise;
+} else {
+  const client = new MongoClient(mongoUri, mongoOptions);
+
+  clientPromise = client.connect();
 }
+
+export { clientPromise };
+
+/* =========================================
+   Mongoose
+   يستخدمه باقي المشروع
+========================================= */
 
 async function dbConnect() {
-  if (cached!.conn) {
-    return cached!.conn;
+  if (mongoose.connection.readyState >= 1) {
+    return mongoose.connection;
   }
 
-  if (!cached!.promise) {
-    cached!.promise = mongoose.connect(MONGODB_URI!);
-  }
+  await mongoose.connect(mongoUri, {
+    maxPoolSize: 10,
+    serverSelectionTimeoutMS: 10000,
+  });
 
-  cached!.conn = await cached!.promise;
-
-  return cached!.conn;
+  return mongoose.connection;
 }
 
 export default dbConnect;

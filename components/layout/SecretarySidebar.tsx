@@ -16,18 +16,18 @@ import {
 const menu = [
   {
     title: "accueil",
-    href: "/secretary",
+    href: "/secretaire",
     icon: FaHome,
   },
   {
     title: "Gestion des clients",
-    href: "/secretary/clients",
+    href: "/secretaire/clients",
     icon: FaUsers,
   },
  
   {
     title: "traveaux",
-    href: "/secretary/tasks",
+    href: "/secretaire/tasks",
     icon: FaClipboardList,
   },
   

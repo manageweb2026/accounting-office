@@ -34,6 +34,13 @@ const menu = [
     href: "/admin/services",
     icon: FaClipboardList,
   },
+
+  {
+    title: "Mode de paiement",
+    href: "/admin/paymentM",
+    icon: FaClipboardList,
+  },
+
   {
     title: "Rqpports",
     href: "/admin/reports",

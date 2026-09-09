@@ -5,11 +5,13 @@ import Task from "@/models/Task";
 import { getCurrentUser } from "@/lib/auth";
 import Client from "@/models/Client";
 import Service from "@/models/Service";
- export const dynamic = "force-dynamic";
+
+export const dynamic = "force-dynamic";
 
 // إجبار تسجيل الـ Models
 void Client;
 void Service;
+
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ status: string }> }
@@ -17,7 +19,11 @@ export async function GET(
   try {
     await dbConnect();
 
-    const user = getCurrentUser(request);
+    // ==========================================
+    // المستخدم الحالي
+    // ==========================================
+
+    const user = await getCurrentUser(request);
 
     if (!user) {
       return NextResponse.json(
@@ -31,39 +37,104 @@ export async function GET(
 
     const { status } = await params;
 
+    // ==========================================
+    // تحديد الفلتر حسب الحالة
+    // ==========================================
+
     let filter: any = {};
+
+    // ------------------------------------------
+    // Nouvelles
+    // ------------------------------------------
 
     if (status === "nouvelle") {
       filter = {
         status: "nouvelle",
-        employee: { $exists: true },
-      };
-    } else {
-      filter = {
-        employee: user.id,
-        status,
+        $or: [
+          {
+            employee: {
+              $exists: false,
+            },
+          },
+          {
+            employee: null,
+          },
+        ],
       };
     }
 
+    // ------------------------------------------
+    // En cours / Terminées
+    // ------------------------------------------
+
+    else if (
+      status === "en_cours" ||
+      status === "terminee"
+    ) {
+      filter = {
+        employee: user.id,
+        status: status,
+      };
+    }
+
+    // ------------------------------------------
+    // حالة غير معروفة
+    // ------------------------------------------
+
+    else {
+      return NextResponse.json(
+        {
+          success: false,
+          message: "Statut invalide",
+        },
+        { status: 400 }
+      );
+    }
+
+    // ==========================================
+    // Debug
+    // ==========================================
+
+    console.log("=================================");
+    console.log("EMPLOYEE REPORT DETAILS");
     console.log("USER:", user.id);
-console.log("STATUS:", status);
-console.log("FILTER:", filter);
+    console.log("STATUS:", status);
+    console.log("FILTER:", JSON.stringify(filter));
+    console.log("=================================");
+
+    // ==========================================
+    // جلب المهام
+    // ==========================================
 
     const tasks = await Task.find(filter)
-      .populate("client", "firstName lastName")
-      .populate("service", "name")
+      .populate(
+        "client",
+        "firstName lastName nif nis na rc"
+      )
+      .populate(
+        "service",
+        "name"
+      )
       .sort({
-        dueDate: 1,
+        assignedAt: 1,
       });
+
+    // ==========================================
+    // النتيجة
+    // ==========================================
+
+    console.log("TASKS COUNT:", tasks.length);
 
     return NextResponse.json({
       success: true,
       tasks,
+      count: tasks.length,
     });
-
   } catch (error) {
-
-    console.error(error);
+    console.error(
+      "❌ EMPLOYEE REPORT STATUS ERROR:",
+      error
+    );
 
     return NextResponse.json(
       {
@@ -72,6 +143,5 @@ console.log("FILTER:", filter);
       },
       { status: 500 }
     );
-
   }
 }

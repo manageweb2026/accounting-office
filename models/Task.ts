@@ -1,7 +1,9 @@
 import { Schema, model, models } from "mongoose";
-import Client from "./Client";
-import Service from "./Service";
-import User from "./Users";
+
+import "./Client";
+import "./Service";
+import "./Users";
+import "./Modep";
 
 const TaskSchema = new Schema(
   {
@@ -108,11 +110,20 @@ nextExecution: {
   default: null,
 },
 
-    // تاريخ استلام المهمة من الموظف
+    // تاريخ بداية المهمة من الموظف
     assignedAt: {
       type: Date,
       default: null,
     },
+
+
+    paymentMethod: {
+  type: Schema.Types.ObjectId,
+  ref: "PaymentMethod",
+  required: true,
+},
+
+
 
     // تاريخ إنهاء المهمة
     completedAt: {
@@ -125,4 +136,4 @@ nextExecution: {
   }
 );
 
-export default models.Task || model("Task", TaskSchema);
+export default models.Task || model("Task", TaskSchema)

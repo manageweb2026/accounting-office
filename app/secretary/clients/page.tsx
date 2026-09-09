@@ -1,17 +1,17 @@
 "use client";
 
 import { useEffect, useState } from "react";
+
 import EditClientForm from "@/components/clients/EditClientForm";
 import DeleteConfirmation from "@/components/common/DeleteConfirmation";
 import ClientForm from "@/components/clients/ClientForm";
-import AssignServicesDialog from "@/components/clients/AssignServicesDialog";
+
 import {
   Dialog,
   DialogContent,
-  DialogHeader,
-  DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+
 import ClientServicesDialog from "@/components/clients/ClientServicesDialog";
 
 type Client = {
@@ -28,199 +28,324 @@ type Client = {
 };
 
 export default function ClientsPage() {
+  // ==========================================
+  // إضافة / تعديل العميل
+  // ==========================================
+
   const [open, setOpen] = useState(false);
-  const [clients, setClients] = useState<Client[]>([]);
-  const [selectedClient, setSelectedClient] = useState<Client | null>(null);
-const [openServices, setOpenServices] = useState(false);
 
+  const [editingClient, setEditingClient] =
+    useState<Client | null>(null);
 
-const [servicesOpen, setServicesOpen] = useState(false);
+  // ==========================================
+  // قائمة العملاء
+  // ==========================================
 
-const [servicesClient, setServicesClient] =
-  useState<Client | null>(null);
+  const [clients, setClients] =
+    useState<Client[]>([]);
 
-const [editingClient, setEditingClient] =
-  useState<Client | null>(null);
+  // ==========================================
+  // خدمات العميل
+  // ==========================================
+
+  const [servicesOpen, setServicesOpen] =
+    useState(false);
+
+  const [servicesClient, setServicesClient] =
+    useState<Client | null>(null);
+
+  // ==========================================
+  // تحميل العملاء
+  // ==========================================
+
   useEffect(() => {
     loadClients();
-    
   }, []);
 
-
-
   async function loadClients() {
-    const res = await fetch("/api/clients");
-    const data = await res.json();
+    try {
+      const res = await fetch("/api/clients", {
+        cache: "no-store",
+      });
 
-    if (data.success) {
-      setClients(data.clients);
+      const data = await res.json();
+
+      if (data.success) {
+        setClients(data.clients);
+      }
+    } catch (error) {
+      console.error(
+        "Erreur lors du chargement des clients:",
+        error
+      );
     }
   }
+
+  // ==========================================
+  // حذف العميل
+  // ==========================================
 
   async function deleteClient(id: string) {
+    try {
+      const res = await fetch(
+        `/api/clients/${id}`,
+        {
+          method: "DELETE",
+        }
+      );
 
+      const data = await res.json();
 
-  try {
-    const res = await fetch(`/api/clients/${id}`, {
-      method: "DELETE",
-    });
+      if (!res.ok || !data.success) {
+        alert(
+          data.message ||
+            "Erreur lors de la suppression du client"
+        );
+        return;
+      }
 
-    const data = await res.json();
+      await loadClients();
 
-    if (!data.success) {
-      alert(data.message);
-      return;
+    } catch (error) {
+      console.error(
+        "Erreur suppression client:",
+        error
+      );
+
+      alert(
+        "Erreur serveur lors de la suppression"
+      );
     }
-
-    loadClients();
-
-  } catch (error) {
-    console.error(error);
-    alert("حدث خطأ أثناء الحذف");
   }
-}
 
   return (
     <div className="p-6">
 
-      {/* العنوان وزر الإضافة */}
+      {/* ======================================
+          العنوان + إضافة عميل
+      ====================================== */}
+
       <div className="flex justify-between items-center mb-6">
 
         <h1 className="text-3xl font-bold">
           Gestion des clients
         </h1>
 
-        <Dialog open={open} onOpenChange={setOpen}>
+        <Dialog
+          open={open}
+          onOpenChange={(value) => {
+            setOpen(value);
 
-         <DialogTrigger asChild>
-  <button
-    onClick={() => setSelectedClient(null)}
-    className="bg-blue-600 text-white px-4 py-2 rounded-lg"
-  >
-    creer client
-  </button>
-</DialogTrigger>
+            if (!value) {
+              setEditingClient(null);
+            }
+          }}
+        >
 
-         <DialogContent className="max-w-2xl">
+          <DialogTrigger asChild>
 
-  {editingClient ? (
-    <EditClientForm
-      client={editingClient}
-      onSuccess={() => {
-        setOpen(false);
-        setEditingClient(null);
-        loadClients();
-      }}
-    />
-  ) : (
-    <ClientForm
-      onSuccess={() => {
-        setOpen(false);
-        loadClients();
-      }}
-    />
-  )}
+            <button
+              type="button"
+              onClick={() => {
+                setEditingClient(null);
+              }}
+              className="bg-blue-600 text-white px-4 py-2 rounded-lg"
+            >
+              Créer client
+            </button>
 
-</DialogContent>
+          </DialogTrigger>
+
+          <DialogContent className="max-w-2xl">
+
+            {editingClient ? (
+
+              <EditClientForm
+                client={editingClient}
+                onSuccess={() => {
+                  setOpen(false);
+                  setEditingClient(null);
+                  loadClients();
+                }}
+              />
+
+            ) : (
+
+              <ClientForm
+                onSuccess={() => {
+                  setOpen(false);
+                  loadClients();
+                }}
+              />
+
+            )}
+
+          </DialogContent>
 
         </Dialog>
 
       </div>
 
-      {/* جدول الزبائن */}
+      {/* ======================================
+          جدول العملاء
+      ====================================== */}
 
       <table className="w-full border">
 
-   <thead className="bg-gray-100">
-  <tr>
-    <th className="p-3 border">nom</th>
-    <th className="p-3 border">prenom</th>
-    <th className="p-3 border">contact</th>
-    <th className="p-3 border">NIF</th>
-     <th className="p-3 border">NIS</th>
-      <th className="p-3 border">NA</th>
-       <th className="p-3 border">RC</th>
-    <th className="p-3 border">status</th>
-    
-      <th className="p-3 border">
-  Services
-</th>
-    <th className="p-3 border">operation</th>
-  </tr>
-</thead>
+        <thead className="bg-gray-100">
 
-<tbody>
-  {clients.map((client) => (
-    <tr key={client._id}>
-      <td className="border p-3">{client.firstName}</td>
+          <tr>
 
-      <td className="border p-3">{client.lastName}</td>
+            <th className="p-3 border">
+              Nom
+            </th>
 
-      <td className="border p-3">{client.contact}</td>
+            <th className="p-3 border">
+              Prénom
+            </th>
 
-      <td className="border p-3">{client.nif}</td>
-      <td className="border p-3">{client.nis}</td>
-      <td className="border p-3">{client.na}</td>
-      <td className="border p-3">{client.rc}</td>
+            <th className="p-3 border">
+              Contact
+            </th>
 
-      <td className="border p-3">
-        {client.isActive ? "نشط" : "موقوف"}
-      </td>
-      <td className="border p-3">
+            <th className="p-3 border">
+              Statut
+            </th>
 
- <button
-  onClick={() => {
-    setServicesClient(client);
-    setServicesOpen(true);
-  }}
-  className="bg-blue-600 text-white px-3 py-1 rounded"
->
-  Services
-</button>
+            <th className="p-3 border">
+              Services
+            </th>
 
-</td>
+            <th className="p-3 border">
+              Opérations
+            </th>
 
+          </tr>
 
-      <td className="border p-3">
-        <div className="flex gap-2">
-         <button
-  onClick={() => {
-  setEditingClient(client);
-  setOpen(true);
-}}
-  className="bg-amber-500 text-white px-3 py-1 rounded"
->
-  modifier
-</button>
+        </thead>
 
-       <DeleteConfirmation
-  title="Supprimer le service"
-  description="Voulez-vous vraiment supprimer ce service ?"
-  onConfirm={() => deleteClient(client._id)}
->
-  <button className="bg-red-600 text-white px-3 py-1 rounded">
-    Supprimer
-  </button>
-</DeleteConfirmation>
-        </div>
-      </td>
-    </tr>
-  ))}
-</tbody>
+        <tbody>
+
+          {clients.map((client) => (
+
+            <tr key={client._id}>
+
+              {/* Nom */}
+
+              <td className="border p-3">
+                {client.firstName}
+              </td>
+
+              {/* Prénom */}
+
+              <td className="border p-3">
+                {client.lastName}
+              </td>
+
+              {/* Contact */}
+
+              <td className="border p-3">
+                {client.contact}
+              </td>
+
+              {/* Statut */}
+
+              <td className="border p-3">
+                {client.isActive
+                  ? "Actif"
+                  : "Inactif"}
+              </td>
+
+              {/* =================================
+                  Services
+              ================================= */}
+
+              <td className="border p-3">
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setServicesClient(client);
+                    setServicesOpen(true);
+                  }}
+                  className="bg-blue-600 text-white px-3 py-1 rounded"
+                >
+                  Services
+                </button>
+
+              </td>
+
+              {/* =================================
+                  Opérations
+              ================================= */}
+
+              <td className="border p-3">
+
+                <div className="flex gap-2">
+
+                  {/* Modifier */}
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setEditingClient(client);
+                      setOpen(true);
+                    }}
+                    className="bg-amber-500 text-white px-3 py-1 rounded"
+                  >
+                    Modifier
+                  </button>
+
+                  {/* Supprimer */}
+
+                  <DeleteConfirmation
+                    title="Supprimer le client"
+                    description="Voulez-vous vraiment supprimer ce client ?"
+                    onConfirm={() =>
+                      deleteClient(client._id)
+                    }
+                  >
+
+                    <button
+                      type="button"
+                      className="bg-red-600 text-white px-3 py-1 rounded"
+                    >
+                      Supprimer
+                    </button>
+
+                  </DeleteConfirmation>
+
+                </div>
+
+              </td>
+
+            </tr>
+
+          ))}
+
+        </tbody>
 
       </table>
 
-    
+      {/* ======================================
+          Dialog Services du client
+      ====================================== */}
 
-{servicesClient && (
+      {servicesClient && (
 
-  <ClientServicesDialog
-    open={servicesOpen}
-    onOpenChange={setServicesOpen}
-    clientId={servicesClient._id}
-  />
+        <ClientServicesDialog
+          open={servicesOpen}
+          onOpenChange={(value) => {
+            setServicesOpen(value);
 
-)}
+            if (!value) {
+              setServicesClient(null);
+            }
+          }}
+          clientId={servicesClient._id}
+        />
+
+      )}
 
     </div>
   );

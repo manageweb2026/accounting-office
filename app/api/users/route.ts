@@ -1,82 +1,73 @@
-import { NextRequest, NextResponse } from "next/server";
-import bcrypt from "bcryptjs";
+import { NextResponse } from 'next/server';
+import { headers } from 'next/headers';
+import { auth } from '@/lib/auth';
 
-import dbConnect from "@/lib/mongodb";
-import User from "@/models/Users";
-
-// جلب جميع المستخدمين
-export async function GET() {
+export async function POST(req: Request) {
   try {
-    await dbConnect();
-
-    const users = await User.find().select("-password");
-
-    return NextResponse.json({
-      success: true,
-      users,
+    const session = await auth.api.getSession({
+      headers: await headers(),
     });
-  } catch (error) {
-    console.error(error);
 
-    return NextResponse.json({
-      success: false,
-      message: "حدث خطأ أثناء جلب المستخدمين",
-    });
-  }
-}
-
-// إضافة مستخدم جديد
-export async function POST(request: NextRequest) {
-  try {
-    await dbConnect();
-
-    const {
-      fullName,
-      username,
-      password,
-      role,
-      phone,
-      email,
-      address,
-    } = await request.json();
-
-    // التحقق من وجود اسم المستخدم
-    const exists = await User.findOne({ username });
-
-    if (exists) {
-      return NextResponse.json({
-        success: false,
-        message: "اسم المستخدم مستخدم بالفعل",
-      });
+    if (!session) {
+      return NextResponse.json({ error: 'Non authentifié' }, { status: 401 });
     }
 
-    // تشفير كلمة المرور
-    const hashedPassword = await bcrypt.hash(password, 10);
+    if (session.user.niveau !== 'GERANT') {
+      return NextResponse.json(
+        { error: 'Accès réservé aux GERANT' },
+        { status: 403 },
+      );
+    }
 
-    const user = await User.create({
-      fullName,
-      username,
-      password: hashedPassword,
-      role,
-      phone,
-      email,
-      address,
-      isActive: true,
+    const body = await req.json();
+
+    const { name, email, phone, address, image, password, niveau } = body;
+
+    if (!name || !email || !password) {
+      return NextResponse.json(
+        {
+          error: 'Nom, email et mot de passe requis',
+        },
+        { status: 400 },
+      );
+    }
+
+    if (password.length < 8) {
+      return NextResponse.json(
+        {
+          error: 'Le mot de passe doit contenir au moins 8 caractères',
+        },
+        { status: 400 },
+      );
+    }
+
+    const result = await auth.api.createUser({
+      body: {
+        name,
+        email,
+        password,
+        role: 'user',
+
+        data: {
+          niveau: niveau || 'AGENT',
+          phone: phone || '',
+          address: address || '',
+          image: image || '',
+        },
+      },
+
+      headers: await headers(),
     });
 
-    return NextResponse.json({
-      success: true,
-      message: "تم إنشاء المستخدم بنجاح",
-      user,
-    });
-
+    return NextResponse.json(result, { status: 201 });
   } catch (error) {
-    console.error(error);
+    console.error('POST /api/users:', error);
 
-    return NextResponse.json({
-      success: false,
-      message: "حدث خطأ في الخادم",
-    });
+    return NextResponse.json(
+      {
+        error: error instanceof Error ? error.message : 'Erreur serveur',
+      },
+      { status: 500 },
+    );
   }
 }
-

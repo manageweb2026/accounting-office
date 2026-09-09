@@ -74,17 +74,15 @@ export async function GET() {
   try {
     await dbConnect();
 
-    const tasks = await Task.find({
+   const tasks = await Task.find({
   status: "nouvelle",
-  employee: null,
 })
-      .populate("client", "firstName lastName")
-      .populate("service", "name")
-    
-     
-      .sort({
-        createdAt: -1,
-      });
+  .populate(
+    "client",
+    "firstName lastName nif nis na rc"
+  )
+  .populate("service", "name")
+  .sort({ createdAt: -1 });
 
     return NextResponse.json({
       success: true,

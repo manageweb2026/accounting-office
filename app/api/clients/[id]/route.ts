@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 
 import dbConnect from "@/lib/mongodb";
 import Client from "@/models/Client";
+import Task from "@/models/Task";
 
 type Params = Promise<{
   id: string;
@@ -40,7 +41,6 @@ export async function PUT(
       client,
       message: "تم تعديل الزبون بنجاح",
     });
-
   } catch (error) {
     console.error(error);
 
@@ -61,7 +61,8 @@ export async function DELETE(
 
     const { id } = await params;
 
-    const client = await Client.findByIdAndDelete(id);
+    // 1️⃣ التأكد من وجود الزبون
+    const client = await Client.findById(id);
 
     if (!client) {
       return NextResponse.json({
@@ -70,11 +71,28 @@ export async function DELETE(
       });
     }
 
+    // 2️⃣ البحث عن عمل مُنجز لهذا الزبون
+    const completedTask = await Task.findOne({
+      client: id,
+      status: { $in: ["terminee", "en_cours"] },
+    });
+
+    // 3️⃣ إذا كان لديه عمل مُنجز، نمنع الحذف
+    if (completedTask) {
+      return NextResponse.json({
+        success: false,
+        message:
+          "Impossible de supprimer ce client car il possède un travail réalisé.",
+      });
+    }
+
+    // 4️⃣ إذا لم يكن لديه عمل مُنجز، نحذفه
+    await Client.findByIdAndDelete(id);
+
     return NextResponse.json({
       success: true,
       message: "تم حذف الزبون بنجاح",
     });
-
   } catch (error) {
     console.error(error);
 

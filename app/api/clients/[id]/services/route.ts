@@ -1,30 +1,95 @@
 import { NextRequest, NextResponse } from "next/server";
-import Service from "@/models/Service";
+
 import dbConnect from "@/lib/mongodb";
+import Client from "@/models/Client";
 import Task from "@/models/Task";
+import ServicesClient from "@/models/ServicesClient";
+import Service from "@/models/Service";
+import PaymentMethod from "@/models/Modep";
 import { getCurrentUser } from "@/lib/auth";
+
 type Params = Promise<{
   id: string;
 }>;
+
+// ========================================
+// GET
+// جلب خدمات الزبون
+// ========================================
 
 export async function GET(
   request: NextRequest,
   { params }: { params: Params }
 ) {
-  await dbConnect();
+  try {
+    await dbConnect();
 
-  const { id } = await params;
+    const { id } = await params;
 
-  const tasks = await Task.find({
-    client: id,
-    recurringActive: true,
-  }).populate("service");
+    // ========================================
+    // التأكد من وجود الزبون
+    // ========================================
 
-  return NextResponse.json({
-    success: true,
-    tasks,
-  });
+    const client = await Client.findById(id);
+
+    if (!client) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: "Client introuvable",
+        },
+        { status: 404 }
+      );
+    }
+
+    // ========================================
+    // جلب الخدمات الخاصة بالزبون
+    // من ServicesClient
+    // ========================================
+
+    const servicesClient =
+      await ServicesClient.find({
+        client: id,
+      })
+        .populate(
+          "service",
+          "name clientPrice employeePrice isRecurring recurrence"
+        )
+        .populate(
+          "paymentMethod",
+          "name"
+        )
+        .sort({
+          createdAt: -1,
+        });
+
+    return NextResponse.json({
+      success: true,
+
+      services: servicesClient,
+    });
+
+  } catch (error) {
+
+    console.error(
+      "GET /api/clients/[id]/services error:",
+      error
+    );
+
+    return NextResponse.json(
+      {
+        success: false,
+        message: "Erreur serveur",
+      },
+      { status: 500 }
+    );
+  }
 }
+
+// ========================================
+// POST
+// إضافة / تعديل / إلغاء خدمات الزبون
+// ========================================
 
 export async function POST(
   request: NextRequest,
@@ -37,87 +102,257 @@ export async function POST(
 
     const body = await request.json();
 
-    const user = getCurrentUser(request);
+    // ========================================
+    // المستخدم الحالي
+    // ========================================
 
-if (!user) {
-  return NextResponse.json(
-    {
-      success: false,
-      message: "Utilisateur non autorisé",
-    },
-    { status: 401 }
-  );
-}
+    const user = await getCurrentUser(request);
 
-    const { services } = body;
+    if (!user) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: "Utilisateur non autorisé",
+        },
+        { status: 401 }
+      );
+    }
 
-    // الخدمات الموجودة حاليا
-    const existingTasks = await Task.find({
-      client: id,
-      recurringActive: true,
-    });
+    // ========================================
+    // التأكد من وجود الزبون
+    // ========================================
 
-    const existingServiceIds = existingTasks.map((task) =>
-      task.service.toString()
-    );
+    const client = await Client.findById(id);
 
-    // الخدمات الجديدة
-    const servicesToCreate = services.filter(
-      (serviceId: string) =>
-        !existingServiceIds.includes(serviceId)
-    );
+    if (!client) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: "Client introuvable",
+        },
+        { status: 404 }
+      );
+    }
 
-    // الخدمات المحذوفة
-    const servicesToDelete = existingServiceIds.filter(
-      (serviceId) =>
-        !services.includes(serviceId)
-    );
+    // ========================================
+    // الخدمات المختارة
+    // ========================================
 
-    // حذف الخدمات التي أزيلت
-    await Task.deleteMany({
-      client: id,
-      service: { $in: servicesToDelete },
-    });
+    const selectedServices = Array.isArray(
+      body.services
+    )
+      ? body.services
+      : [];
 
-    // إنشاء الخدمات الجديدة
-  for (const serviceId of servicesToCreate) {
+    // ========================================
+    // لا توجد خدمات
+    // ========================================
 
-  const service = await Service.findById(serviceId);
+    if (selectedServices.length === 0) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: "Aucun service sélectionné",
+        },
+        { status: 400 }
+      );
+    }
 
-  if (!service) continue;
+    const createdServices = [];
+    const updatedServices = [];
 
-  await Task.create({
-    client: id,
-    service: service._id,
+    // ========================================
+    // معالجة كل خدمة
+    // ========================================
 
-    clientPrice: service.clientPrice,
-    employeePrice: service.employeePrice,
+    for (const serviceId of selectedServices) {
+      // ----------------------------------------
+      // جلب الخدمة
+      // ----------------------------------------
 
-   createdBy: user.id,
+      const service =
+        await Service.findById(serviceId);
 
-    dueDate: new Date(),
+      if (!service) {
+        return NextResponse.json(
+          {
+            success: false,
+            message:
+              `Service introuvable: ${serviceId}`,
+          },
+          { status: 400 }
+        );
+      }
 
-    status: "nouvelle",
+      // ----------------------------------------
+      // التاريخ
+      // ----------------------------------------
 
-    notes: "",
+      const assignedDate =
+        body.assignedDates?.[serviceId];
 
-    isRecurring: service.isRecurring,
-    recurrence: service.recurrence,
+      if (!assignedDate) {
+        return NextResponse.json(
+          {
+            success: false,
+            message:
+              `Veuillez sélectionner une date pour le service "${service.name}"`,
+          },
+          { status: 400 }
+        );
+      }
 
-    recurringActive: true,
+      // ----------------------------------------
+      // طريقة الدفع
+      // ----------------------------------------
 
-    lastExecution: null,
-    nextExecution: null,
-  });
+      const paymentMethodId =
+        body.paymentMethods?.[serviceId];
 
-}
+      if (!paymentMethodId) {
+        return NextResponse.json(
+          {
+            success: false,
+            message:
+              `Veuillez sélectionner un mode de paiement pour le service "${service.name}"`,
+          },
+          { status: 400 }
+        );
+      }
+
+      // ----------------------------------------
+      // التأكد من طريقة الدفع
+      // ----------------------------------------
+
+      const paymentMethod =
+        await PaymentMethod.findById(
+          paymentMethodId
+        );
+
+      if (!paymentMethod) {
+        return NextResponse.json(
+          {
+            success: false,
+            message:
+              "Mode de paiement introuvable",
+          },
+          { status: 400 }
+        );
+      }
+
+      // ----------------------------------------
+      // تحويل التاريخ بدون مشكلة timezone
+      // ----------------------------------------
+
+      const [
+        year,
+        month,
+        day,
+      ] = assignedDate
+        .split("-")
+        .map(Number);
+
+      const datePayement = new Date(
+        Date.UTC(
+          year,
+          month - 1,
+          day
+        )
+      );
+
+      // ========================================
+      // البحث عن الخدمة الموجودة مسبقًا
+      // ========================================
+
+      const existingService =
+        await ServicesClient.findOne({
+          client: id,
+          service: serviceId,
+        });
+
+      // ========================================
+      // موجودة مسبقًا
+      // ========================================
+
+      if (existingService) {
+
+        // إذا كانت غير مفعلة
+        // نعيد تفعيلها
+        existingService.active = true;
+
+        existingService.datePayement =
+          datePayement;
+
+        existingService.paymentMethod =
+          paymentMethodId;
+
+        existingService.clientPrice =
+          service.clientPrice;
+
+        existingService.employeePrice =
+          service.employeePrice;
+
+        await existingService.save();
+
+        updatedServices.push(
+          existingService
+        );
+
+        continue;
+      }
+
+      // ========================================
+      // خدمة جديدة
+      // ========================================
+
+      const newService =
+        await ServicesClient.create({
+          client: id,
+
+          service: serviceId,
+
+          clientPrice:
+            service.clientPrice,
+
+          employeePrice:
+            service.employeePrice,
+
+          createdBy: user.id,
+
+          datePayement,
+
+          active: true,
+
+          paymentMethod:
+            paymentMethodId,
+        });
+
+      createdServices.push(
+        newService
+      );
+    }
+
+    // ========================================
+    // النتيجة
+    // ========================================
 
     return NextResponse.json({
       success: true,
+
+      message:
+        "Les services ont été enregistrés avec succès",
+
+      createdServices,
+
+      updatedServices,
     });
 
   } catch (error) {
-    console.error(error);
+
+    console.error(
+      "POST /api/clients/[id]/services error:",
+      error
+    );
 
     return NextResponse.json(
       {

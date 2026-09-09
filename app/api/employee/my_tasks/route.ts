@@ -20,7 +20,7 @@ const token = request.cookies.get("token")?.value;
 
 console.log("TOKEN:", token);
 
-const user = getCurrentUser(request);
+const user = await getCurrentUser(request);
 console.log("User:", user);
 
   
@@ -43,16 +43,19 @@ console.log(
 console.log("Client Model:", Client.modelName);
 console.log("Service Model:", Service.modelName);
 console.log("Task Model:", Task.modelName);
-    const tasks = await Task.find({
-      employee: user.id,
-      status: "en_cours",
-    })
-      .populate("client", "firstName lastName")
-      .populate("service", "name")
-      .sort({
-        assignedAt: -1,
-      });
 
+
+ const tasks = await Task.find({
+  employee: user.id,
+  status: "en_cours",
+})
+.populate(
+  "client",
+  "firstName lastName nif nis na rc"
+)
+.populate("service", "name")
+.sort({ assignedAt: -1 });
+  
     return NextResponse.json({
       success: true,
       tasks,

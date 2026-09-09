@@ -1,86 +1,150 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextResponse } from 'next/server';
+import { ObjectId } from 'mongodb';
+import { clientPromise } from '@/lib/mongodb';
 
-import dbConnect from "@/lib/mongodb";
-import User from "@/models/Users";
+const COLLECTION_NAME = 'user';
 
-type Params = Promise<{
-  id: string;
-}>;
-
-// تعديل زبون
 export async function PUT(
-  request: NextRequest,
-  { params }: { params: Params }
+  req: Request,
+  { params }: { params: Promise<{ id: string }> },
 ) {
   try {
-    await dbConnect();
-
     const { id } = await params;
 
-    const body = await request.json();
+    console.log('ID reçu:', id);
 
-    const user = await User.findByIdAndUpdate(
-      id,
-      body,
+    if (!ObjectId.isValid(id)) {
+      return NextResponse.json(
+        { message: 'ID utilisateur invalide' },
+        { status: 400 },
+      );
+    }
+
+    const body = await req.json();
+
+    console.log('BODY reçu:', body);
+
+    const client = await clientPromise;
+    const db = client.db();
+
+    const objectId = new ObjectId(id);
+
+    // Vérifier que l'utilisateur existe
+    const userBefore = await db
+      .collection(COLLECTION_NAME)
+      .findOne({ _id: objectId });
+
+    console.log('USER AVANT:', userBefore);
+
+    if (!userBefore) {
+      return NextResponse.json(
+        { message: 'Utilisateur introuvable' },
+        { status: 404 },
+      );
+    }
+
+    // Données à modifier
+    const updateData: {
+      name?: string;
+      email?: string;
+      phone?: string;
+      address?: string;
+      image?: string;
+      niveau?: string;
+      role?: string;
+      password?: string;
+    } = {
+      name: body.name,
+      email: body.email,
+      phone: body.phone || '',
+      address: body.address || '',
+      image: body.image || '',
+      niveau: body.niveau || 'AGENT',
+      role: body.role || 'user',
+    };
+
+    // Ne modifier le mot de passe que s'il est fourni
+    if (typeof body.password === 'string' && body.password.trim() !== '') {
+      updateData.password = body.password;
+    }
+
+    const result = await db.collection(COLLECTION_NAME).findOneAndUpdate(
+      { _id: objectId },
       {
-        new: true,
-        runValidators: true,
-      }
+        $set: updateData,
+      },
+      {
+        returnDocument: 'after',
+      },
     );
 
-    if (!user) {
-      return NextResponse.json({
-        success: false,
-        message: "الزبون غير موجود",
-      });
+    console.log('USER APRÈS:', result);
+
+    if (!result) {
+      return NextResponse.json(
+        { message: 'Utilisateur introuvable après modification' },
+        { status: 404 },
+      );
     }
 
     return NextResponse.json({
-      success: true,
-      user,
-      message: "تم تعديل الزبون بنجاح",
+      ...result,
+      _id: result._id.toString(),
     });
-
   } catch (error) {
+    console.error('================================');
+    console.error('ERREUR PUT USER');
     console.error(error);
+    console.error('================================');
 
-    return NextResponse.json({
-      success: false,
-      message: "حدث خطأ أثناء تعديل الزبون",
-    });
+    return NextResponse.json(
+      {
+        message: 'Erreur serveur lors de la modification',
+      },
+      { status: 500 },
+    );
   }
 }
 
-// حذف زبون
 export async function DELETE(
-  request: NextRequest,
-  { params }: { params: Params }
+  req: Request,
+  { params }: { params: Promise<{ id: string }> },
 ) {
   try {
-    await dbConnect();
-
     const { id } = await params;
 
-    const user = await User.findByIdAndDelete(id);
+    if (!ObjectId.isValid(id)) {
+      return NextResponse.json(
+        { message: 'ID utilisateur invalide' },
+        { status: 400 },
+      );
+    }
 
-    if (!user) {
-      return NextResponse.json({
-        success: false,
-        message: "الزبون غير موجود",
-      });
+    const client = await clientPromise;
+    const db = client.db();
+
+    const result = await db.collection(COLLECTION_NAME).deleteOne({
+      _id: new ObjectId(id),
+    });
+
+    if (result.deletedCount === 0) {
+      return NextResponse.json(
+        { message: 'Utilisateur introuvable' },
+        { status: 404 },
+      );
     }
 
     return NextResponse.json({
-      success: true,
-      message: "تم حذف الزبون بنجاح",
+      message: 'Utilisateur supprimé',
     });
-
   } catch (error) {
-    console.error(error);
+    console.error('DELETE /api/users/[id]:', error);
 
-    return NextResponse.json({
-      success: false,
-      message: "حدث خطأ أثناء حذف الزبون",
-    });
+    return NextResponse.json(
+      {
+        message: 'Erreur serveur lors de la suppression',
+      },
+      { status: 500 },
+    );
   }
 }
