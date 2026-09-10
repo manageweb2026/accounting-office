@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from "next/server";
 
 import dbConnect from "@/lib/mongodb";
 import Client from "@/models/Client";
-import Task from "@/models/Task";
 import ServicesClient from "@/models/ServicesClient";
 import Service from "@/models/Service";
 import PaymentMethod from "@/models/Modep";
@@ -44,33 +43,28 @@ export async function GET(
 
     // ========================================
     // جلب الخدمات الخاصة بالزبون
-    // من ServicesClient
     // ========================================
 
-    const servicesClient =
-      await ServicesClient.find({
-        client: id,
-      })
-        .populate(
-          "service",
-          "name clientPrice employeePrice isRecurring recurrence"
-        )
-        .populate(
-          "paymentMethod",
-          "name"
-        )
-        .sort({
-          createdAt: -1,
-        });
+    const servicesClient = await ServicesClient.find({
+      client: id,
+    })
+      .populate(
+        "service",
+        "name clientPrice employeePrice isRecurring recurrence"
+      )
+      .populate(
+        "paymentMethod",
+        "name"
+      )
+      .sort({
+        createdAt: -1,
+      });
 
     return NextResponse.json({
       success: true,
-
       services: servicesClient,
     });
-
   } catch (error) {
-
     console.error(
       "GET /api/clients/[id]/services error:",
       error
@@ -88,7 +82,7 @@ export async function GET(
 
 // ========================================
 // POST
-// إضافة / تعديل / إلغاء خدمات الزبون
+// إضافة / تعديل خدمات الزبون
 // ========================================
 
 export async function POST(
@@ -166,9 +160,9 @@ export async function POST(
     // ========================================
 
     for (const serviceId of selectedServices) {
-      // ----------------------------------------
+      // ========================================
       // جلب الخدمة
-      // ----------------------------------------
+      // ========================================
 
       const service =
         await Service.findById(serviceId);
@@ -184,9 +178,9 @@ export async function POST(
         );
       }
 
-      // ----------------------------------------
+      // ========================================
       // التاريخ
-      // ----------------------------------------
+      // ========================================
 
       const assignedDate =
         body.assignedDates?.[serviceId];
@@ -202,9 +196,9 @@ export async function POST(
         );
       }
 
-      // ----------------------------------------
+      // ========================================
       // طريقة الدفع
-      // ----------------------------------------
+      // ========================================
 
       const paymentMethodId =
         body.paymentMethods?.[serviceId];
@@ -220,9 +214,9 @@ export async function POST(
         );
       }
 
-      // ----------------------------------------
-      // التأكد من طريقة الدفع
-      // ----------------------------------------
+      // ========================================
+      // التأكد من وجود طريقة الدفع
+      // ========================================
 
       const paymentMethod =
         await PaymentMethod.findById(
@@ -240,9 +234,34 @@ export async function POST(
         );
       }
 
-      // ----------------------------------------
+      // ========================================
+      // حساب سعر العميل
+      // ========================================
+
+      let clientPrice =
+        service.clientPrice;
+
+      /*
+       * إذا كانت طريقة الدفع CCP
+       *
+       * الحساب:
+       *
+       * (clientPrice / 5000) * 12 + 18
+       */
+
+      if (
+        paymentMethod.name
+          ?.toString()
+          .trim()
+          .toUpperCase() === "CCP"
+      ) {
+        clientPrice =
+          (service.clientPrice / 5000) * 12 + 18;
+      }
+
+      // ========================================
       // تحويل التاريخ بدون مشكلة timezone
-      // ----------------------------------------
+      // ========================================
 
       const [
         year,
@@ -271,24 +290,26 @@ export async function POST(
         });
 
       // ========================================
-      // موجودة مسبقًا
+      // الخدمة موجودة مسبقًا
       // ========================================
 
       if (existingService) {
-
-        // إذا كانت غير مفعلة
-        // نعيد تفعيلها
+        // إعادة التفعيل
         existingService.active = true;
 
+        // تحديث التاريخ
         existingService.datePayement =
           datePayement;
 
+        // تحديث طريقة الدفع
         existingService.paymentMethod =
           paymentMethodId;
 
+        // تحديث سعر العميل
         existingService.clientPrice =
-          service.clientPrice;
+          clientPrice;
 
+        // تحديث سعر الموظف
         existingService.employeePrice =
           service.employeePrice;
 
@@ -302,7 +323,7 @@ export async function POST(
       }
 
       // ========================================
-      // خدمة جديدة
+      // إنشاء خدمة جديدة
       // ========================================
 
       const newService =
@@ -312,12 +333,13 @@ export async function POST(
           service: serviceId,
 
           clientPrice:
-            service.clientPrice,
+            clientPrice,
 
           employeePrice:
             service.employeePrice,
 
-          createdBy: user.id,
+          createdBy:
+            user.id,
 
           datePayement,
 
@@ -346,9 +368,7 @@ export async function POST(
 
       updatedServices,
     });
-
   } catch (error) {
-
     console.error(
       "POST /api/clients/[id]/services error:",
       error

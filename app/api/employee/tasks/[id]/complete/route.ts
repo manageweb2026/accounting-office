@@ -8,63 +8,111 @@ export async function PATCH(
 ) {
   try {
     await dbConnect();
+
     const { id } = await params;
+
+    // البحث عن المهمة
     const task = await Task.findById(id);
 
-   
     if (!task) {
-      return NextResponse.json({
-        success: false,
-        message: "المهمة غير موجودة",
-      });
+      return NextResponse.json(
+        {
+          success: false,
+          message: "المهمة غير موجودة",
+        },
+        { status: 404 }
+      );
     }
 
-    task.status = "terminee";
-    task.completedAt = new Date();
-
+    // التاريخ الحالي
     const today = new Date();
 
-task.lastExecution = today;
+    // البيانات التي سيتم تحديثها
+    const updateData: any = {
+      status: "terminee",
+      completedAt: today,
+      lastExecution: today,
+    };
 
-if (task.isRecurring) {
+    // ==========================================
+    // إذا كانت المهمة متكررة
+    // ==========================================
 
-  const next = new Date(today);
+    if (task.isRecurring) {
+      const next = new Date(today);
 
-  switch (task.recurrence) {
+      switch (task.recurrence) {
+        case "mensuel":
+          next.setMonth(next.getMonth() + 1);
+          break;
 
-    case "mensuel":
-      next.setMonth(next.getMonth() + 1);
-      break;
+        case "trimestriel":
+          next.setMonth(next.getMonth() + 3);
+          break;
 
-    case "trimestriel":
-      next.setMonth(next.getMonth() + 3);
-      break;
+        case "semestriel":
+          next.setMonth(next.getMonth() + 6);
+          break;
 
-    case "semestriel":
-      next.setMonth(next.getMonth() + 6);
-      break;
+        case "annuel":
+          next.setFullYear(next.getFullYear() + 1);
+          break;
+      }
 
-    case "annuel":
-      next.setFullYear(next.getFullYear() + 1);
-      break;
-  }
+      updateData.nextExecution = next;
+    }
 
-  task.nextExecution = next;
-}
+    // ==========================================
+    // تحديث المهمة مباشرة
+    // ==========================================
 
-    await task.save();
+    const updatedTask = await Task.findByIdAndUpdate(
+      id,
+      {
+        $set: updateData,
+      },
+      {
+        new: true,
+        runValidators: false,
+      }
+    );
+
+    if (!updatedTask) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: "لم يتم العثور على المهمة",
+        },
+        { status: 404 }
+      );
+    }
+
+    console.log("✅ Task completed:", {
+      id: updatedTask._id,
+      status: updatedTask.status,
+      completedAt: updatedTask.completedAt,
+    });
 
     return NextResponse.json({
       success: true,
-      message: "تم إنهاء المهمة",
+      message: "تم إنهاء المهمة بنجاح",
+      task: {
+        _id: updatedTask._id,
+        status: updatedTask.status,
+        completedAt: updatedTask.completedAt,
+        lastExecution: updatedTask.lastExecution,
+        nextExecution: updatedTask.nextExecution,
+      },
     });
-
   } catch (error) {
-    console.error(error);
+    console.error("❌ Complete task error:", error);
 
-    return NextResponse.json({
-      success: false,
-      message: "خطأ في الخادم",
-    });
+    return NextResponse.json(
+      {
+        success: false,
+        message: "حدث خطأ في الخادم",
+      },
+      { status: 500 }
+    );
   }
 }

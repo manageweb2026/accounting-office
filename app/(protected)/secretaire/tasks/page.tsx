@@ -353,7 +353,7 @@ const filteredTasks = tasks.filter((task) => {
     }`}
   >
     <div className="text-lg font-semibold">
-      🆕 Services nouvelles
+      🆕 Nouvelles
     </div>
 
     <div className="text-2xl font-bold mt-1">
@@ -381,7 +381,7 @@ const filteredTasks = tasks.filter((task) => {
     }`}
   >
     <div className="text-lg font-semibold">
-      🔄 En révision
+      🔄 En cours
     </div>
 
     <div className="text-2xl font-bold mt-1">
@@ -413,7 +413,7 @@ const filteredTasks = tasks.filter((task) => {
     }`}
   >
     <div className="text-lg font-semibold">
-      ✅ Services terminées
+      ✅ terminées
     </div>
 
     <div className="text-2xl font-bold mt-1">

@@ -1,15 +1,25 @@
-import Header from '@/components/Header';
+import { headers } from "next/headers";
+import { redirect } from "next/navigation";
+import { auth } from "@/lib/auth";
 
-export default function ProtectedLayout({
+export default async function ProtectedLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  return (
-    <>
-     
+  const session = await auth.api.getSession({
+    headers: await headers(),
+  });
 
-      <main className="p-6">{children}</main>
-    </>
+  if (!session) {
+    redirect("/signin");
+  }
+
+  console.log("SESSION USER:", session.user);
+
+  return (
+    <main className="p-6">
+      {children}
+    </main>
   );
 }

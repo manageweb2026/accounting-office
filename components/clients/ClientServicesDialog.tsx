@@ -349,9 +349,26 @@ export default function ClientServicesDialog({
                         : "(ponctuel)"}
                     </div>
 
-                    <div className="text-sm text-gray-600">
-                      {service.clientPrice} DA
-                    </div>
+              <div className="text-sm text-gray-600">
+  Prix :{" "}
+  {(() => {
+    const selectedPaymentMethodId =
+      selectedPaymentMethods[service._id];
+
+    const selectedPaymentMethod = paymentMethods.find(
+      (method) => method._id === selectedPaymentMethodId
+    );
+
+    const isCCP =
+      selectedPaymentMethod?.name?.trim().toUpperCase() === "CCP";
+
+    const price = isCCP
+      ? Math.round((service.clientPrice / 5000) * 12 + 18 )+ service.clientPrice
+      : service.clientPrice;
+
+    return `${price.toFixed(2)} DA`;
+  })()}
+</div>
 
                   </div>
 
