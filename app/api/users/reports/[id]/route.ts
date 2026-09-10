@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import dbConnect from "@/lib/mongodb";
-import User from "@/models/Users";
+import User from "@/models/User";
 import Task from "@/models/Task";
 import { getCurrentUser } from "@/lib/auth";
 
@@ -11,9 +11,17 @@ export async function GET(
   try {
     await dbConnect();
 
-  const currentUser = await getCurrentUser(request);
+    // ==========================================
+    // المستخدم الحالي
+    // ==========================================
+    const currentUser = await getCurrentUser(request);
 
-    if (!currentUser || currentUser.role !== "admin") {
+    console.log("Current User:", currentUser);
+
+    // ==========================================
+    // المدير فقط
+    // ==========================================
+    if (!currentUser || currentUser.niveau !== "GERANT") {
       return NextResponse.json(
         {
           success: false,
@@ -25,10 +33,20 @@ export async function GET(
       );
     }
 
+    // ==========================================
+    // ID الموظف
+    // ==========================================
     const { id } = await params;
 
-    const employee = await User.findById(id).select(
-      "fullName phone email address"
+    // ==========================================
+    // البحث عن الموظف
+    // ==========================================
+    const employee = await User.findOne({
+      _id: id,
+      role: "user",
+      niveau: "AGENT",
+    }).select(
+      "_id name email image phone address role niveau isActive"
     );
 
     if (!employee) {
@@ -43,39 +61,62 @@ export async function GET(
       );
     }
 
+    // ==========================================
+    // جلب مهام الموظف
+    // ==========================================
     const tasks = await Task.find({
       employee: id,
     })
       .populate("client")
       .populate("service")
-      .populate("createdBy", "fullName")
+      .populate("createdBy", "name email")
       .sort({
         createdAt: -1,
       });
 
+    // ==========================================
+    // حساب الإحصائيات
+    // ==========================================
     const newTasks = tasks.filter(
-      (t) => t.status === "nouvelle"
+      (task) => task.status === "nouvelle"
     ).length;
 
     const inProgressTasks = tasks.filter(
-      (t) => t.status === "en_cours"
+      (task) => task.status === "en_cours"
     ).length;
 
     const completedTasks = tasks.filter(
-      (t) => t.status === "terminee"
+      (task) => task.status === "terminee"
     ).length;
 
+    // ==========================================
+    // مجموع أجر الموظف
+    // المهام المنتهية فقط
+    // ==========================================
     const profit = tasks
-      .filter((t) => t.status === "terminee")
+      .filter((task) => task.status === "terminee")
       .reduce(
-        (sum, task) => sum + task.employeePrice,
+        (sum, task) => sum + (task.employeePrice || 0),
         0
       );
 
+    // ==========================================
+    // النتيجة
+    // ==========================================
     return NextResponse.json({
       success: true,
 
-      employee,
+      employee: {
+        id: employee._id.toString(),
+        name: employee.name || "",
+        email: employee.email || "",
+        image: employee.image || "",
+        phone: employee.phone || "",
+        address: employee.address || "",
+        role: employee.role || "user",
+        niveau: employee.niveau || "AGENT",
+        isActive: employee.isActive ?? true,
+      },
 
       summary: {
         newTasks,
@@ -87,7 +128,7 @@ export async function GET(
       tasks,
     });
   } catch (error) {
-    console.error(error);
+    console.error("Employee Report API Error:", error);
 
     return NextResponse.json(
       {

@@ -1,89 +1,136 @@
-
-
 import { NextRequest, NextResponse } from "next/server";
 import dbConnect from "@/lib/mongodb";
-import User from "@/models/Users";
+import User from "@/models/User";
 import Task from "@/models/Task";
-import {getCurrentUser} from "@/lib/auth";
+import { getCurrentUser } from "@/lib/auth";
 
 export async function GET(request: NextRequest) {
   try {
     await dbConnect();
 
+    // ==========================================
+    // المستخدم الحالي
+    // ==========================================
     const currentUser = await getCurrentUser(request);
-    
 
-console.log("Current User:", currentUser);
+    console.log("Current User:", currentUser);
 
-    if (!currentUser || currentUser.role !== "admin") {
+    // ==========================================
+    // المدير فقط
+    // ==========================================
+    if (!currentUser || currentUser.niveau !== "GERANT") {
       return NextResponse.json(
-        { success: false, message: "Accès refusé" },
-        { status: 403 }
+        {
+          success: false,
+          message: "Accès refusé",
+        },
+        {
+          status: 403,
+        }
       );
     }
 
+    // ==========================================
+    // جلب جميع الموظفين
+    // ==========================================
     const employees = await User.find({
-      role: "client",
-    }).select("fullName");
+      role: "user",
+      niveau: "AGENT",
+    }).select(
+      "_id name email image phone address role niveau isActive"
+    );
 
-    const reports = [];
+    console.log("Employees found:", employees.length);
 
-    for (const employee of employees) {
-      const newTasks = await Task.countDocuments({
-      
-        status: "nouvelle",
-      });
+    // ==========================================
+    // إنشاء التقرير لكل موظف
+    // ==========================================
+    const reports = await Promise.all(
+      employees.map(async (employee) => {
+        const tasks = await Task.find({
+          employee: employee._id,
+        });
 
-      const inProgressTasks = await Task.countDocuments({
-        employee: employee._id,
-        status: "en_cours",
-      });
+        // -------------------------------
+        // المهام الجديدة
+        // -------------------------------
+        const newTasks = tasks.filter(
+          (task) => task.status === "nouvelle"
+        ).length;
 
-      const completedTasks = await Task.countDocuments({
-        employee: employee._id,
-        status: "terminee",
-      });
+        // -------------------------------
+        // المهام قيد الإنجاز
+        // -------------------------------
+        const inProgressTasks = tasks.filter(
+          (task) => task.status === "en_cours"
+        ).length;
 
-      const profit = await Task.aggregate([
-        {
-          $match: {
-            employee: employee._id,
-            status: "terminee",
-          },
-        },
-        {
-          $group: {
-            _id: null,
-            total: {
-              $sum: "$employeePrice",
-            },
-          },
-        },
-      ]);
+        // -------------------------------
+        // المهام المنتهية
+        // -------------------------------
+        const completedTasks = tasks.filter(
+          (task) => task.status === "terminee"
+        ).length;
 
-      reports.push({
-        id: employee._id,
-        fullName: employee.fullName,
-        newTasks,
-        inProgressTasks,
-        completedTasks,
-        profit: profit[0]?.total || 0,
-      });
-    }
+        // -------------------------------
+        // أجر الموظف
+        // المهام المنتهية فقط
+        // -------------------------------
+        const profit = tasks
+          .filter((task) => task.status === "terminee")
+          .reduce(
+            (sum, task) => sum + (Number(task.employeePrice) || 0),
+            0
+          );
 
+        return {
+          id: employee._id.toString(),
+
+          name: employee.name || "",
+
+          email: employee.email || "",
+
+          image: employee.image || "",
+
+          phone: employee.phone || "",
+
+          address: employee.address || "",
+
+          role: employee.role || "user",
+
+          niveau: employee.niveau || "AGENT",
+
+          isActive: employee.isActive ?? true,
+
+          newTasks,
+
+          inProgressTasks,
+
+          completedTasks,
+
+          profit,
+        };
+      })
+    );
+
+    // ==========================================
+    // النتيجة
+    // ==========================================
     return NextResponse.json({
       success: true,
       reports,
     });
   } catch (error) {
-    console.error(error);
+    console.error("Reports API Error:", error);
 
     return NextResponse.json(
       {
         success: false,
         message: "Erreur serveur",
       },
-      { status: 500 }
+      {
+        status: 500,
+      }
     );
   }
 }
