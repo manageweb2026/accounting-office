@@ -33,13 +33,23 @@ export async function GET(request: NextRequest) {
     // ==========================================
     // جلب جميع الموظفين
     // ==========================================
-    const employees = await User.find({
-      role: "user",
-      niveau: "AGENT",
-    }).select(
-      "_id name email image phone address role niveau isActive"
-    );
+   const allUsers = await User.find({})
+  .select("_id name email role niveau isActive")
+  .lean();
 
+console.log("=================================");
+console.log("ALL USERS:", allUsers);
+console.log("ALL USERS COUNT:", allUsers.length);
+console.log("=================================");
+
+const employees = await User.find({
+  role: "user",
+  niveau: "AGENT",
+}).select(
+  "_id name email image phone address role niveau isActive"
+);
+
+console.log("EMPLOYEES FOUND:", employees.length);
     console.log("Employees found:", employees.length);
 
     // ==========================================
