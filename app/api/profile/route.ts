@@ -88,6 +88,12 @@ export async function PUT(request: Request) {
       _id: new ObjectId(session.user.id),
     });
 
+    console.log("===== PROFILE IMAGE DEBUG =====");
+console.log("SESSION IMAGE:", session.user.image);
+console.log("NEW IMAGE URL:", imageUrl);
+console.log("MONGODB IMAGE:", updatedUser?.image);
+console.log("===============================");
+
     return NextResponse.json({
       message: 'Profil modifié avec succès',
       user: updatedUser,
