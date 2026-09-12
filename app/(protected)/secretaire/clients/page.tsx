@@ -162,16 +162,28 @@ const [editingClient, setEditingClient] =
       </td>
       <td className="border p-3">
 
- <button
+ 
+{/* المهام الدورية */}
+<button
   onClick={() => {
     setServicesClient(client);
     setServicesOpen(true);
   }}
   className="bg-blue-600 text-white px-3 py-1 rounded"
 >
-  Services
+  Recurrent
 </button>
 
+{/* المهام العادية */}
+<button
+  onClick={() => {
+    setTaskClient(client);
+    setTaskOpen(true);
+  }}
+  className="bg-green-600 text-white px-3 py-1 rounded"
+>
+  Tasks
+</button>
 </td>
 
 

@@ -93,11 +93,13 @@ export default function Header() {
              
 
               <Link
-                href="/secretaire/profile"
+                href="/secretaire/clients"
                 className="text-gray-700 hover:text-blue-600 font-medium"
               >
-                Profil
+                Clients
               </Link>
+
+
 
                <Link
                 href="/secretaire/tasks"
@@ -106,13 +108,16 @@ export default function Header() {
                 Tâches
               </Link>
 
+              
                <Link
-                href="/secretaire/clients"
+                href="/secretaire/profile"
                 className="text-gray-700 hover:text-blue-600 font-medium"
               >
-                Clients
+                Profil
               </Link>
             </>
+
+            
           )}
 
           {/* AGENT */}
@@ -122,14 +127,14 @@ export default function Header() {
                 href="/employee/tasks"
                 className="text-gray-700 hover:text-blue-600 font-medium"
               >
-                Taches
+                 Tâches
               </Link>
 
                <Link
                 href="/employee/my_tasks"
                 className="text-gray-700 hover:text-blue-600 font-medium"
               >
-                Mes taches
+               Mes taches
               </Link>
 
               
@@ -145,7 +150,7 @@ export default function Header() {
                 href="/employee/profile"
                 className="text-gray-700 hover:text-blue-600 font-medium"
               >
-                Profil
+               Profil
               </Link>
             </>
           )}
@@ -282,12 +287,12 @@ export default function Header() {
                
 
                 <Link
-                  href="/profile"
-                  onClick={closeMenu}
-                  className="rounded-md px-4 py-3 text-gray-700 hover:bg-blue-50 hover:text-blue-600"
-                >
-                  👤 Profil
-                </Link>
+                href="/secretaire/clients"
+                 onClick={closeMenu}
+                className="text-gray-700 hover:text-blue-600 font-medium"
+              >
+                Clients
+              </Link>
 
                  <Link
                   href="/secretaire/tasks"
@@ -298,34 +303,59 @@ export default function Header() {
                 </Link>
 
 
-                  <Link
-                href="/secretaire/clients"
-                 onClick={closeMenu}
+                 
+                 <Link
+                href="/secretaire/profile"
+                  onClick={closeMenu}
                 className="text-gray-700 hover:text-blue-600 font-medium"
               >
-                Clients
+                
+                👤Profil
               </Link>
+
+              
+            
               </>
             )}
 
             {/* AGENT */}
             {niveau === 'AGENT' && (
               <>
-                <Link
-                  href="/travaux"
-                  onClick={closeMenu}
-                  className="rounded-md px-4 py-3 text-gray-700 hover:bg-blue-50 hover:text-blue-600"
-                >
-                  🔧 Travaux
-                </Link>
 
-                <Link
-                  href="/profile"
-                  onClick={closeMenu}
-                  className="rounded-md px-4 py-3 text-gray-700 hover:bg-blue-50 hover:text-blue-600"
-                >
-                  👤 Profil
-                </Link>
+
+                 <Link
+                href="/employee/tasks"
+                 onClick={closeMenu}
+                className="text-gray-700 hover:text-blue-600 font-medium"
+              >
+              📋 Tâches
+              </Link>
+
+               <Link
+                href="/employee/my_tasks"
+                 onClick={closeMenu}
+                className="text-gray-700 hover:text-blue-600 font-medium"
+              >
+               🔧 Mes taches
+              </Link>
+
+              
+                             <Link
+                href="/employee/report"
+                 onClick={closeMenu}
+                className="text-gray-700 hover:text-blue-600 font-medium"
+              >
+                Rapport
+              </Link>
+
+
+              <Link
+                href="/employee/profile"
+                 onClick={closeMenu}
+                className="text-gray-700 hover:text-blue-600 font-medium"
+              >
+               👤 Profil
+              </Link>
               </>
             )}
           </nav>
