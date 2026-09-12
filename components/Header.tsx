@@ -291,7 +291,7 @@ export default function Header() {
                  onClick={closeMenu}
                 className="text-gray-700 hover:text-blue-600 font-medium"
               >
-                👥 Clients
+                👥Clients
               </Link>
 
                  <Link
@@ -299,7 +299,7 @@ export default function Header() {
                   onClick={closeMenu}
                   className="rounded-md px-4 py-3 text-gray-700 hover:bg-blue-50 hover:text-blue-600"
                 >
-                  📋 Tâches
+                📋Tâches
                 </Link>
 
 
@@ -310,7 +310,7 @@ export default function Header() {
                 className="text-gray-700 hover:text-blue-600 font-medium"
               >
                 
-                👤Profil
+               👤Profil
               </Link>
 
               
