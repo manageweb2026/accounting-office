@@ -291,7 +291,7 @@ export default function Header() {
                  onClick={closeMenu}
                 className="text-gray-700 hover:text-blue-600 font-medium"
               >
-                Clients
+                👥 Clients
               </Link>
 
                  <Link
