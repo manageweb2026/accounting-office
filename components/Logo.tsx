@@ -15,7 +15,7 @@ export default function Logo() {
 
   <div className="flex flex-col leading-none">
     <h1 className="text-lg font-extrabold tracking-tight text-slate-900">
-      COMPTA
+      Compta
     </h1>
 
     <span className="mt-1 text-[9px] font-semibold uppercase tracking-[0.25em] text-slate-400">
