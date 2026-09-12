@@ -9,9 +9,9 @@ export default function Logo() {
       <Image src="/logo.png" alt="Logo" width={40} height={40} priority />
 
       <div className="hidden sm:block">
-        <h1 className="text-xl font-bold text-slate-800">AuthApp</h1>
+        <h1 className="text-xl font-bold text-slate-800">COMPTA_DESK</h1>
 
-        <p className="text-xs text-slate-500">Better Auth</p>
+        
       </div>
     </Link>
   );

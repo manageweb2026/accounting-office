@@ -37,12 +37,7 @@ export default function Header() {
                 Dashboard
               </Link>
 
-              <Link
-                href="/admin/profile"
-                className="text-gray-700 hover:text-blue-600 font-medium"
-              >
-                Profil
-              </Link>
+            
 
               <Link
                 href="/admin/users"
@@ -70,7 +65,7 @@ export default function Header() {
                 href="/admin/paymentM"
                 className="text-gray-700 hover:text-blue-600 font-medium"
               >
-                les methodes de paiement
+               paiement
               </Link>
 
                 <Link
@@ -78,6 +73,14 @@ export default function Header() {
                 className="text-gray-700 hover:text-blue-600 font-medium"
               >
                 rapport
+              </Link>
+
+
+                <Link
+                href="/admin/profile"
+                className="text-gray-700 hover:text-blue-600 font-medium"
+              >
+                Profil
               </Link>
 
               
