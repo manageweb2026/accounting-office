@@ -328,7 +328,7 @@ export default function Header() {
                  onClick={closeMenu}
                 className="text-gray-700 hover:text-blue-600 font-medium"
               >
-              📋 Tâches
+              📋Tâches
               </Link>
 
                <Link
@@ -336,7 +336,7 @@ export default function Header() {
                  onClick={closeMenu}
                 className="text-gray-700 hover:text-blue-600 font-medium"
               >
-               🔧 Mes taches
+              🔧Mes taches
               </Link>
 
               
@@ -345,7 +345,7 @@ export default function Header() {
                  onClick={closeMenu}
                 className="text-gray-700 hover:text-blue-600 font-medium"
               >
-                Rapport
+              📋Rapport
               </Link>
 
 
@@ -354,7 +354,7 @@ export default function Header() {
                  onClick={closeMenu}
                 className="text-gray-700 hover:text-blue-600 font-medium"
               >
-               👤 Profil
+              👤Profil
               </Link>
               </>
             )}
