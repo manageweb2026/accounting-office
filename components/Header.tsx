@@ -210,30 +210,70 @@ export default function Header() {
             {/* GERANT */}
             {niveau === 'GERANT' && (
               <>
-                <Link
-                  href="/dashboard"
+              
+ <Link
+                href="/admin/activity"
                   onClick={closeMenu}
-                  className="rounded-md px-4 py-3 text-gray-700 hover:bg-blue-50 hover:text-blue-600"
-                >
-                  📊 Dashboard
-                </Link>
+                className="text-gray-700 hover:text-blue-600 font-medium"
+              >
+               📊 Dashboard
+              </Link>
+
+            
+
+              <Link
+                href="/admin/users"
+                  onClick={closeMenu}
+                className="text-gray-700 hover:text-blue-600 font-medium"
+              >
+                👥 Utilisateurs
+              </Link>
 
                 <Link
-                  href="/profile"
+                href="/admin/clients"
                   onClick={closeMenu}
-                  className="rounded-md px-4 py-3 text-gray-700 hover:bg-blue-50 hover:text-blue-600"
-                >
-                  👤 Profil
-                </Link>
+                className="text-gray-700 hover:text-blue-600 font-medium"
+              >
+                clients
+              </Link>
 
                 <Link
-                  href="/users"
+                href="/admin/services"
                   onClick={closeMenu}
-                  className="rounded-md px-4 py-3 text-gray-700 hover:bg-blue-50 hover:text-blue-600"
-                >
-                  👥 Utilisateurs
-                </Link>
-              </>
+                className="text-gray-700 hover:text-blue-600 font-medium"
+              >
+                services
+              </Link>
+
+
+                <Link
+                href="/admin/paymentM"
+                  onClick={closeMenu}
+                className="text-gray-700 hover:text-blue-600 font-medium"
+              >
+               paiement
+              </Link>
+
+                <Link
+                href="/admin/reports"
+                  onClick={closeMenu}
+                className="text-gray-700 hover:text-blue-600 font-medium"
+              >
+                rapport
+              </Link>
+
+
+                <Link
+                href="/admin/profile"
+                  onClick={closeMenu}
+                className="text-gray-700 hover:text-blue-600 font-medium"
+              >
+                Profil
+              </Link>
+
+              
+            </>
+          
             )}
 
             {/* SECRETAIRE */}
