@@ -10,19 +10,53 @@ export const recurrenceTypes = [
 export type RecurrenceType = typeof recurrenceTypes[number];
 
 export const serviceSchema = z.object({
-  name: z.string().min(2, "Le nom est obligatoire"),
+  name: z
+    .string()
+    .min(2, "Le nom est obligatoire"),
 
   description: z.string().optional(),
 
-  clientPrice: z.number().min(0),
+  direction: z.string().optional(),
 
-  employeePrice: z.number().min(0),
+  date_recurent: z.string().optional(),
 
-  isActive: z.boolean(),
+  date_limite: z.string().optional(),
+
+  Prix_Traitement_chifré: z
+    .number()
+    .min(0, "Le prix doit être supérieur ou égal à 0"),
+
+  Prix_Traitement_néant: z
+    .number()
+    .min(0, "Le prix doit être supérieur ou égal à 0"),
+
+  Prix_secretaireC: z
+    .number()
+    .min(0, "Le prix doit être supérieur ou égal à 0"),
+
+  Prix_secretaireN: z
+    .number()
+    .min(0, "Le prix doit être supérieur ou égal à 0"),
+
+  Prix_service_Agent: z
+    .number()
+    .min(0, "Le prix doit être supérieur ou égal à 0"),
+
+  Prix_Agent: z
+    .number()
+    .min(0, "Le prix doit être supérieur ou égal à 0"),
 
   isRecurring: z.boolean(),
 
-  recurrence: z.enum(recurrenceTypes).or(z.literal("")),
+  recurrence: z.enum([
+    "mensuel",
+    "trimestriel",
+    "semestriel",
+    "annuel",
+    "ponctuel",
+  ]).nullable(),
+
+  isActive: z.boolean(),
 });
 
 export type ServiceFormData = z.infer<typeof serviceSchema>;

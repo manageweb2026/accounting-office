@@ -13,15 +13,57 @@ const ServiceSchema = new Schema(
       default: "",
     },
 
+     direction: {
+      type: String,
+      default: "",
+    },
+
+
+     date_recurent: {
+      type: String,
+      default: "",
+    },
+
+     date_limite: {
+      type: String,
+      default: "",
+    },
+
+
+   
     // السعر الذي يدفعه الزبون
-    clientPrice: {
+     Prix_Traitement_chifré : {
+      type: Number,
+      required: true,
+      default: 0,
+    },
+
+    Prix_Traitement_néant : {
+      type: Number,
+      required: true,
+      default: 0,
+    },
+
+      Prix_secretaireC : {
+      type: Number,
+      required: true,
+      default: 0,
+    },
+
+    Prix_secretaireN: {
+      type: Number,
+      required: true,
+      default: 0,
+    },
+
+     Prix_service_Agent: {
       type: Number,
       required: true,
       default: 0,
     },
 
     // أجر الموظف
-    employeePrice: {
+   Prix_Agent: {
       type: Number,
       required: true,
       default: 0,

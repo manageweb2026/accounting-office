@@ -35,15 +35,27 @@ export default function ServiceForm({
   const form = useForm<ServiceFormData>({
     resolver: zodResolver(serviceSchema),
 
-    defaultValues: {
+   defaultValues: {
   name: "",
   description: "",
-  clientPrice: 0,
-  employeePrice: 0,
-  isActive: true,
 
+  direction: "",
+  date_recurent: "",
+  date_limite: "",
+
+  Prix_Traitement_chifré: 0,
+  Prix_Traitement_néant: 0,
+
+  Prix_secretaireC: 0,
+  Prix_secretaireN: 0,
+
+  Prix_service_Agent: 0,
+  Prix_Agent: 0,
+
+  isActive: true,
   isRecurring: false,
-  recurrence: "",
+
+  recurrence: null,
 },
   });
 
@@ -76,11 +88,24 @@ export default function ServiceForm({
 form.reset({
   name: "",
   description: "",
-  clientPrice: 0,
-  employeePrice: 0,
+
+  direction: "",
+  date_recurent: "",
+  date_limite: "",
+
+  Prix_Traitement_chifré: 0,
+  Prix_Traitement_néant: 0,
+
+  Prix_secretaireC: 0,
+  Prix_secretaireN: 0,
+
+  Prix_service_Agent: 0,
+  Prix_Agent: 0,
+
   isActive: true,
   isRecurring: false,
-  recurrence: "",
+
+  recurrence: null,
 });
 
       onSuccess?.();
@@ -92,19 +117,22 @@ form.reset({
   }
 
   return (
-    <form
-      onSubmit={handleSubmit(onSubmit)}
-      className="space-y-4"
-    >
+   <form
+  onSubmit={handleSubmit(onSubmit)}
+  className="flex flex-col space-y-4"
+>
+  {/* منطقة الحقول القابلة للتمرير */}
+  <div className="max-h-[70vh] overflow-y-auto pr-3">
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
 
+      {/* اسم الخدمة */}
       <div>
-
         <label className="block mb-2 font-medium">
-          اسم الخدمة
+          Nom de service
         </label>
 
         <Input
-          placeholder="مثال: TVA"
+          placeholder="..."
           {...register("name")}
         />
 
@@ -113,145 +141,265 @@ form.reset({
             {errors.name.message}
           </p>
         )}
-
       </div>
 
+      {/* الوصف */}
       <div>
-
         <label className="block mb-2 font-medium">
-          الوصف
+          Description
         </label>
 
         <Input
-          placeholder="وصف الخدمة"
+          placeholder="..."
           {...register("description")}
         />
-
       </div>
 
-     <div>
+      {/* Direction */}
+      <div>
+        <label className="block mb-2 font-medium">
+          Direction
+        </label>
 
-  <label className="block mb-2 font-medium">
-    Prix Client (DA)
-  </label>
+        <Input
+          placeholder="..."
+          {...register("direction")}
+        />
+      </div>
 
-  <Input
-    type="number"
-    {...register("clientPrice", {
-      valueAsNumber: true,
-    })}
-  />
+      {/* تاريخ الدورية */}
+      <div>
+        <label className="block mb-2 font-medium">
+          Date récurrente
+        </label>
 
-  {errors.clientPrice && (
-    <p className="text-red-500 text-sm mt-1">
-      {errors.clientPrice.message}
-    </p>
-  )}
+        <Input
+          type="date"
+          {...register("date_recurent")}
+        />
+      </div>
 
-</div>
+      {/* تاريخ الحد الأقصى */}
+      <div>
+        <label className="block mb-2 font-medium">
+          Date limite
+        </label>
 
-<div>
+        <Input
+          type="date"
+          {...register("date_limite")}
+        />
+      </div>
 
-  <label className="block mb-2 font-medium">
-    Prix Employé (DA)
-  </label>
+      {/* Prix Traitement chiffré */}
+      <div>
+        <label className="block mb-2 font-medium">
+          Prix Traitement chiffré (DA)
+        </label>
 
-  <Input
-    type="number"
-    {...register("employeePrice", {
-      valueAsNumber: true,
-    })}
-  />
+        <Input
+          type="number"
+          {...register("Prix_Traitement_chifré", {
+            valueAsNumber: true,
+          })}
+        />
 
-  {errors.employeePrice && (
-    <p className="text-red-500 text-sm mt-1">
-      {errors.employeePrice.message}
-    </p>
-  )}
+        {errors.Prix_Traitement_chifré && (
+          <p className="text-red-500 text-sm mt-1">
+            {errors.Prix_Traitement_chifré.message}
+          </p>
+        )}
+      </div>
 
-</div>
+      {/* Prix Traitement néant */}
+      <div>
+        <label className="block mb-2 font-medium">
+          Prix Traitement néant (DA)
+        </label>
 
-   {/* Service active */}
-<div className="flex items-center gap-3">
+        <Input
+          type="number"
+          {...register("Prix_Traitement_néant", {
+            valueAsNumber: true,
+          })}
+        />
 
-  <Checkbox
-    checked={form.watch("isActive")}
-    onCheckedChange={(checked) =>
-      form.setValue("isActive", Boolean(checked))
-    }
-  />
+        {errors.Prix_Traitement_néant && (
+          <p className="text-red-500 text-sm mt-1">
+            {errors.Prix_Traitement_néant.message}
+          </p>
+        )}
+      </div>
 
-  <label>Service active</label>
+      {/* Prix secrétaire C */}
+      <div>
+        <label className="block mb-2 font-medium">
+          Prix secrétaire C (DA)
+        </label>
 
-</div>
+        <Input
+          type="number"
+          {...register("Prix_secretaireC", {
+            valueAsNumber: true,
+          })}
+        />
 
-{/* Service récurrent */}
-<div className="flex items-center gap-3">
+        {errors.Prix_secretaireC && (
+          <p className="text-red-500 text-sm mt-1">
+            {errors.Prix_secretaireC.message}
+          </p>
+        )}
+      </div>
 
-  <Checkbox
-    checked={isRecurring}
-    onCheckedChange={(checked) =>
-      form.setValue("isRecurring", Boolean(checked))
-    }
-  />
+      {/* Prix secrétaire N */}
+      <div>
+        <label className="block mb-2 font-medium">
+          Prix secrétaire N (DA)
+        </label>
 
-  <label>Service récurrent</label>
+        <Input
+          type="number"
+          {...register("Prix_secretaireN", {
+            valueAsNumber: true,
+          })}
+        />
 
-</div>
+        {errors.Prix_secretaireN && (
+          <p className="text-red-500 text-sm mt-1">
+            {errors.Prix_secretaireN.message}
+          </p>
+        )}
+      </div>
 
-{isRecurring && (
+      {/* Prix service Agent */}
+      <div>
+        <label className="block mb-2 font-medium">
+          Prix service Agent (DA)
+        </label>
 
-  <div>
+        <Input
+          type="number"
+          {...register("Prix_service_Agent", {
+            valueAsNumber: true,
+          })}
+        />
 
-    <label className="block mb-2 font-medium">
-      Type de récurrence
-    </label>
+        {errors.Prix_service_Agent && (
+          <p className="text-red-500 text-sm mt-1">
+            {errors.Prix_service_Agent.message}
+          </p>
+        )}
+      </div>
 
-    <Select
-      onValueChange={(value) =>
-        form.setValue(
-          "recurrence",
-          value as "mensuel" | "trimestriel" | "semestriel" | "annuel"
-        )
-      }
-    >
-      <SelectTrigger>
-        <SelectValue placeholder="Choisir..." />
-      </SelectTrigger>
+      {/* Prix Agent */}
+      <div>
+        <label className="block mb-2 font-medium">
+          Prix Agent (DA)
+        </label>
 
-      <SelectContent>
+        <Input
+          type="number"
+          {...register("Prix_Agent", {
+            valueAsNumber: true,
+          })}
+        />
 
-        <SelectItem value="mensuel">
-          Mensuel
-        </SelectItem>
+        {errors.Prix_Agent && (
+          <p className="text-red-500 text-sm mt-1">
+            {errors.Prix_Agent.message}
+          </p>
+        )}
+      </div>
 
-        <SelectItem value="trimestriel">
-          Trimestriel
-        </SelectItem>
+      {/* Service active */}
+      <div className="flex items-center gap-3 md:col-span-2">
+        <Checkbox
+          checked={form.watch("isActive")}
+          onCheckedChange={(checked) =>
+            form.setValue("isActive", Boolean(checked))
+          }
+        />
 
-        <SelectItem value="semestriel">
-          Semestriel
-        </SelectItem>
+        <label>Service active</label>
+      </div>
 
-        <SelectItem value="annuel">
-          Annuel
-        </SelectItem>
+      {/* Service récurrent */}
+      <div className="flex items-center gap-3 md:col-span-2">
+        <Checkbox
+          checked={isRecurring}
+          onCheckedChange={(checked) => {
+            const value = Boolean(checked);
 
-      </SelectContent>
+            form.setValue("isRecurring", value);
 
-    </Select>
+            if (!value) {
+              form.setValue("recurrence", null);
+            }
+          }}
+        />
 
+        <label>Service récurrent</label>
+      </div>
+
+      {/* Type de récurrence */}
+      {isRecurring && (
+        <div className="md:col-span-2">
+          <label className="block mb-2 font-medium">
+            Type de récurrence
+          </label>
+
+          <Select
+            value={form.watch("recurrence") ?? ""}
+            onValueChange={(value) =>
+              form.setValue(
+                "recurrence",
+                value as
+                  | "mensuel"
+                  | "trimestriel"
+                  | "semestriel"
+                  | "annuel"
+                  | "ponctuel"
+              )
+            }
+          >
+            <SelectTrigger>
+              <SelectValue placeholder="Choisir..." />
+            </SelectTrigger>
+
+            <SelectContent>
+              <SelectItem value="mensuel">
+                Mensuel
+              </SelectItem>
+
+              <SelectItem value="trimestriel">
+                Trimestriel
+              </SelectItem>
+
+              <SelectItem value="semestriel">
+                Semestriel
+              </SelectItem>
+
+              <SelectItem value="annuel">
+                Annuel
+              </SelectItem>
+
+              <SelectItem value="ponctuel">
+                Ponctuel
+              </SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+      )}
+
+    </div>
   </div>
 
-)}
-      <div className="flex justify-end pt-4">
-
-        <Button type="submit">
-          حفظ
-        </Button>
-
-      </div>
-
-    </form>
+  {/* زر الحفظ ثابت أسفل منطقة التمرير */}
+  <div className="flex justify-end pt-4 border-t">
+    <Button type="submit">
+      enregistrer
+    </Button>
+  </div>
+</form>
   );
 }

@@ -38,11 +38,24 @@ export default function EditServiceForm({
  defaultValues: {
   name: "",
   description: "",
-  clientPrice: 0,
-  employeePrice: 0,
+
+  direction: "",
+  date_recurent: "",
+  date_limite: "",
+
+  Prix_Traitement_chifré: 0,
+  Prix_Traitement_néant: 0,
+
+  Prix_secretaireC: 0,
+  Prix_secretaireN: 0,
+
+  Prix_service_Agent: 0,
+  Prix_Agent: 0,
+
   isActive: true,
   isRecurring: false,
-  recurrence: "",
+
+  recurrence: null,
 },
   });
 
@@ -57,15 +70,34 @@ export default function EditServiceForm({
 
   useEffect(() => {
       if (service) {
-      form.reset({
+     form.reset({
   name: service.name,
+
   description: service.description || "",
-  clientPrice: service.clientPrice ?? 0,
-  employeePrice: service.employeePrice ?? 0,
-  isActive: service.isActive,
+
+  direction: service.direction || "",
+
+  date_recurent: service.date_recurent || "",
+
+  date_limite: service.date_limite || "",
+
+  Prix_Traitement_chifré: service.Prix_Traitement_chifré ?? 0,
+
+  Prix_Traitement_néant: service.Prix_Traitement_néant ?? 0,
+
+  Prix_secretaireC: service.Prix_secretaireC ?? 0,
+
+  Prix_secretaireN: service.Prix_secretaireN ?? 0,
+
+  Prix_service_Agent: service.Prix_service_Agent ?? 0,
+
+  Prix_Agent: service.Prix_Agent ?? 0,
+
+  isActive: service.isActive ?? true,
 
   isRecurring: service.isRecurring ?? false,
-  recurrence: service.recurrence ?? "",
+
+  recurrence: service.recurrence ?? null,
 });
       }
     }, [service, form]);
@@ -97,14 +129,17 @@ export default function EditServiceForm({
   }
   return (
     <form
-      onSubmit={handleSubmit(onSubmit)}
-      className="space-y-4"
-    >
+  onSubmit={handleSubmit(onSubmit)}
+  className="flex flex-col space-y-4"
+>
+  {/* منطقة الحقول القابلة للتمرير */}
+  <div className="max-h-[70vh] overflow-y-auto pr-3">
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
 
+      {/* Nom de service */}
       <div>
-
         <label className="block mb-2 font-medium">
-          nom de sevice
+          Nom de service
         </label>
 
         <Input
@@ -117,65 +152,178 @@ export default function EditServiceForm({
             {errors.name.message}
           </p>
         )}
-
       </div>
 
+      {/* Description */}
       <div>
-
         <label className="block mb-2 font-medium">
-          description de service
+          Description de service
         </label>
 
         <Input
-          placeholder=""
+          placeholder="..."
           {...register("description")}
         />
-
       </div>
 
-    <div>
+      {/* Direction */}
+      <div>
+        <label className="block mb-2 font-medium">
+          Direction
+        </label>
 
-  <label className="block mb-2 font-medium">
-    Prix Client (DA)
-  </label>
+        <Input
+          placeholder="..."
+          {...register("direction")}
+        />
+      </div>
 
-  <Input
-    type="number"
-    {...register("clientPrice", {
-      valueAsNumber: true,
-    })}
-  />
+      {/* Date récurrente */}
+      <div>
+        <label className="block mb-2 font-medium">
+          Date récurrente
+        </label>
 
-  {errors.clientPrice && (
-    <p className="text-red-500 text-sm mt-1">
-      {errors.clientPrice.message}
-    </p>
-  )}
+        <Input
+          type="date"
+          {...register("date_recurent")}
+        />
+      </div>
 
-</div>
+      {/* Date limite */}
+      <div>
+        <label className="block mb-2 font-medium">
+          Date limite
+        </label>
 
-<div>
+        <Input
+          type="date"
+          {...register("date_limite")}
+        />
+      </div>
 
-  <label className="block mb-2 font-medium">
-    Prix Employé (DA)
-  </label>
+      {/* Prix Traitement chiffré */}
+      <div>
+        <label className="block mb-2 font-medium">
+          Prix Traitement chiffré (DA)
+        </label>
 
-  <Input
-    type="number"
-    {...register("employeePrice", {
-      valueAsNumber: true,
-    })}
-  />
+        <Input
+          type="number"
+          {...register("Prix_Traitement_chifré", {
+            valueAsNumber: true,
+          })}
+        />
 
-  {errors.employeePrice && (
-    <p className="text-red-500 text-sm mt-1">
-      {errors.employeePrice.message}
-    </p>
-  )}
+        {errors.Prix_Traitement_chifré && (
+          <p className="text-red-500 text-sm mt-1">
+            {errors.Prix_Traitement_chifré.message}
+          </p>
+        )}
+      </div>
 
-</div>
-      <div className="flex items-center gap-3">
+      {/* Prix Traitement néant */}
+      <div>
+        <label className="block mb-2 font-medium">
+          Prix Traitement néant (DA)
+        </label>
 
+        <Input
+          type="number"
+          {...register("Prix_Traitement_néant", {
+            valueAsNumber: true,
+          })}
+        />
+
+        {errors.Prix_Traitement_néant && (
+          <p className="text-red-500 text-sm mt-1">
+            {errors.Prix_Traitement_néant.message}
+          </p>
+        )}
+      </div>
+
+      {/* Prix secrétaire C */}
+      <div>
+        <label className="block mb-2 font-medium">
+          Prix secrétaire C (DA)
+        </label>
+
+        <Input
+          type="number"
+          {...register("Prix_secretaireC", {
+            valueAsNumber: true,
+          })}
+        />
+
+        {errors.Prix_secretaireC && (
+          <p className="text-red-500 text-sm mt-1">
+            {errors.Prix_secretaireC.message}
+          </p>
+        )}
+      </div>
+
+      {/* Prix secrétaire N */}
+      <div>
+        <label className="block mb-2 font-medium">
+          Prix secrétaire N (DA)
+        </label>
+
+        <Input
+          type="number"
+          {...register("Prix_secretaireN", {
+            valueAsNumber: true,
+          })}
+        />
+
+        {errors.Prix_secretaireN && (
+          <p className="text-red-500 text-sm mt-1">
+            {errors.Prix_secretaireN.message}
+          </p>
+        )}
+      </div>
+
+      {/* Prix service Agent */}
+      <div>
+        <label className="block mb-2 font-medium">
+          Prix service Agent (DA)
+        </label>
+
+        <Input
+          type="number"
+          {...register("Prix_service_Agent", {
+            valueAsNumber: true,
+          })}
+        />
+
+        {errors.Prix_service_Agent && (
+          <p className="text-red-500 text-sm mt-1">
+            {errors.Prix_service_Agent.message}
+          </p>
+        )}
+      </div>
+
+      {/* Prix Agent */}
+      <div>
+        <label className="block mb-2 font-medium">
+          Prix Agent (DA)
+        </label>
+
+        <Input
+          type="number"
+          {...register("Prix_Agent", {
+            valueAsNumber: true,
+          })}
+        />
+
+        {errors.Prix_Agent && (
+          <p className="text-red-500 text-sm mt-1">
+            {errors.Prix_Agent.message}
+          </p>
+        )}
+      </div>
+
+      {/* Service active */}
+      <div className="flex items-center gap-3 md:col-span-2">
         <Checkbox
           checked={form.watch("isActive")}
           onCheckedChange={(checked) =>
@@ -183,83 +331,86 @@ export default function EditServiceForm({
           }
         />
 
-        <label>service active</label>
-
+        <label>Service active</label>
       </div>
 
-      <div className="flex items-center gap-3">
+      {/* Service récurrent */}
+      <div className="flex items-center gap-3 md:col-span-2">
+        <Checkbox
+          checked={isRecurring}
+          onCheckedChange={(checked) => {
+            const value = Boolean(checked);
 
-  <Checkbox
-    checked={isRecurring}
-    onCheckedChange={(checked) =>
-      form.setValue("isRecurring", Boolean(checked))
-    }
-  />
+            form.setValue("isRecurring", value);
 
-  <label>Service récurrent</label>
+            if (!value) {
+              form.setValue("recurrence", null);
+            }
+          }}
+        />
 
-</div>
+        <label>Service récurrent</label>
+      </div>
 
-{isRecurring && (
+      {/* Type de récurrence */}
+      {isRecurring && (
+        <div className="md:col-span-2">
+          <label className="block mb-2 font-medium">
+            Type de récurrence
+          </label>
 
-  <div>
+          <Select
+            value={form.watch("recurrence") ?? ""}
+            onValueChange={(value) =>
+              form.setValue(
+                "recurrence",
+                value as
+                  | "mensuel"
+                  | "trimestriel"
+                  | "semestriel"
+                  | "annuel"
+                  | "ponctuel"
+              )
+            }
+          >
+            <SelectTrigger>
+              <SelectValue placeholder="Choisir..." />
+            </SelectTrigger>
 
-    <label className="block mb-2 font-medium">
-      Type de récurrence
-    </label>
+            <SelectContent>
+              <SelectItem value="mensuel">
+                Mensuel
+              </SelectItem>
 
-    <Select
-      value={form.watch("recurrence")}
-      onValueChange={(value) =>
-        form.setValue(
-          "recurrence",
-          value as
-            | "mensuel"
-            | "trimestriel"
-            | "semestriel"
-            | "annuel"
-        )
-      }
-    >
+              <SelectItem value="trimestriel">
+                Trimestriel
+              </SelectItem>
 
-      <SelectTrigger>
-        <SelectValue />
-      </SelectTrigger>
+              <SelectItem value="semestriel">
+                Semestriel
+              </SelectItem>
 
-      <SelectContent>
+              <SelectItem value="annuel">
+                Annuel
+              </SelectItem>
 
-        <SelectItem value="mensuel">
-          Mensuel
-        </SelectItem>
+              <SelectItem value="ponctuel">
+                Ponctuel
+              </SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+      )}
 
-        <SelectItem value="trimestriel">
-          Trimestriel
-        </SelectItem>
-
-        <SelectItem value="semestriel">
-          Semestriel
-        </SelectItem>
-
-        <SelectItem value="annuel">
-          Annuel
-        </SelectItem>
-
-      </SelectContent>
-
-    </Select>
-
+    </div>
   </div>
 
-)}
-
-      <div className="flex justify-end pt-4">
-
-        <Button type="submit">
-          حفظ
-        </Button>
-
-      </div>
-
-    </form>
+  {/* زر الحفظ */}
+  <div className="flex justify-end pt-4 border-t">
+    <Button type="submit">
+      enregistrer
+    </Button>
+  </div>
+</form>
   );
 }
