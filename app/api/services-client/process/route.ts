@@ -1,9 +1,58 @@
+
 import { NextRequest, NextResponse } from "next/server";
 
 import dbConnect from "@/lib/mongodb";
 import ServicesClient from "@/models/ServicesClient";
 import Task from "@/models/Task";
 
+// ========================================
+// نوع الخدمة بعد populate
+// ========================================
+
+type PopulatedService = {
+  _id: string;
+
+  name: string;
+
+  description?: string;
+
+  direction?: string;
+
+  date_recurent?: string;
+
+  date_limite?: string;
+
+  Prix_Traitement_chifré?: number;
+
+  Prix_Traitement_néant?: number;
+
+  Prix_secretaireC?: number;
+
+  Prix_secretaireN?: number;
+
+  Prix_service_Agent?: number;
+
+  Prix_Agent?: number;
+
+  isRecurring: boolean;
+
+  recurrence:
+    | "mensuel"
+    | "trimestriel"
+    | "semestriel"
+    | "annuel"
+    | "ponctuel"
+    | null;
+};
+
+// ========================================
+// نوع طريقة الدفع بعد populate
+// ========================================
+
+type PopulatedPaymentMethod = {
+  _id: string;
+  name: string;
+};
 
 // ========================================
 // GET
@@ -14,16 +63,14 @@ export async function GET(request: NextRequest) {
   return processServices();
 }
 
-
 // ========================================
 // POST
-// يستخدم للاختبار اليدوي فقط
+// يستخدم للاختبار اليدوي
 // ========================================
 
 export async function POST(request: NextRequest) {
   return processServices();
 }
-
 
 // ========================================
 // معالجة الخدمات
@@ -40,7 +87,6 @@ async function processServices() {
     console.log("🔥 NOW:", now);
     console.log("================================");
 
-
     // ========================================
     // جلب الخدمات المستحقة
     // ========================================
@@ -48,55 +94,60 @@ async function processServices() {
     const servicesClients =
       await ServicesClient.find({
         active: true,
+
         datePayement: {
           $lte: now,
         },
       })
         .populate("service")
-        .populate("client")
         .populate("paymentMethod");
-
 
     console.log(
       "🔥 SERVICES CLIENTS COUNT:",
       servicesClients.length
     );
 
-
     const createdTasks = [];
-
 
     // ========================================
     // معالجة كل خدمة
     // ========================================
 
     for (const servicesClient of servicesClients) {
-
       console.log("================================");
+
       console.log(
         "🔥 ServicesClient ID:",
         servicesClient._id
       );
+
       console.log(
         "🔥 Date:",
         servicesClient.datePayement
       );
+
       console.log(
         "🔥 Active:",
         servicesClient.active
       );
+
       console.log("================================");
 
+      // ========================================
+      // الخدمة بعد populate
+      // ========================================
 
-      const service = servicesClient.service;
-
+      const service =
+        servicesClient.service as unknown as PopulatedService;
 
       // ========================================
       // التأكد من وجود الخدمة
       // ========================================
 
-      if (!service) {
-
+      if (
+        !service ||
+        !service._id
+      ) {
         console.log(
           "❌ SERVICE NOT FOUND:",
           servicesClient._id
@@ -105,6 +156,57 @@ async function processServices() {
         continue;
       }
 
+      // ========================================
+      // التأكد من وجود createdBy
+      // ========================================
+
+      if (!servicesClient.createdBy) {
+        console.log(
+          "❌ CREATED BY NOT FOUND:",
+          servicesClient._id
+        );
+
+        continue;
+      }
+
+      // ========================================
+      // طريقة الدفع بعد populate
+      // ========================================
+
+      const paymentMethod =
+        servicesClient.paymentMethod as unknown as PopulatedPaymentMethod;
+
+      if (
+        !paymentMethod ||
+        !paymentMethod._id
+      ) {
+        console.log(
+          "❌ PAYMENT METHOD NOT FOUND:",
+          servicesClient._id
+        );
+
+        continue;
+      }
+
+      // ========================================
+      // الأسعار من Service الجديدة
+      // ========================================
+
+      const clientPrice =
+        service.Prix_Traitement_chifré ?? 0;
+
+      const employeePrice =
+        service.Prix_Agent ?? 0;
+
+      console.log(
+        "💰 CLIENT PRICE:",
+        clientPrice
+      );
+
+      console.log(
+        "💰 EMPLOYEE PRICE:",
+        employeePrice
+      );
 
       // ========================================
       // منع إنشاء Task مكررة
@@ -113,7 +215,9 @@ async function processServices() {
       const existingTask =
         await Task.findOne({
           client: servicesClient.client,
+
           service: service._id,
+
           status: {
             $in: [
               "nouvelle",
@@ -122,127 +226,232 @@ async function processServices() {
           },
         });
 
+      // ========================================
+      // إذا كانت هناك Task مفتوحة
+      // ========================================
 
       if (existingTask) {
-
         console.log(
           "⚠️ TASK ALREADY EXISTS:",
           existingTask._id
         );
 
+        // ====================================
+        // إذا كانت الخدمة دورية
+        // نحرك التاريخ للموعد القادم
+        // ====================================
+
+        if (
+          service.isRecurring &&
+          service.recurrence
+        ) {
+          const nextDate =
+            calculateNextDate(
+              servicesClient.datePayement,
+              service.recurrence
+            );
+
+          servicesClient.datePayement =
+            nextDate;
+
+          await servicesClient.save();
+
+          console.log(
+            "🔄 EXISTING TASK - NEXT DATE:",
+            nextDate
+          );
+        }
+
         continue;
       }
 
+      // ========================================
+      // حساب الموعد القادم
+      // ========================================
+
+      const nextExecution =
+        service.isRecurring &&
+        service.recurrence
+          ? calculateNextDate(
+              servicesClient.datePayement,
+              service.recurrence
+            )
+          : null;
 
       // ========================================
       // إنشاء Task
       // ========================================
 
-      const task = await Task.create({
+      const task =
+        await Task.create({
+          // -------------------------------
+          // الزبون
+          // -------------------------------
 
-        client:
-          servicesClient.client,
+          client:
+            servicesClient.client,
 
-        service:
-          service._id,
+          // -------------------------------
+          // الخدمة
+          // -------------------------------
 
-        clientPrice:
-          servicesClient.clientPrice,
+          service:
+            service._id,
 
-        employeePrice:
-          servicesClient.employeePrice,
+          // -------------------------------
+          // السعر الذي يدفعه الزبون
+          // -------------------------------
 
-        createdBy:
-          servicesClient.createdBy,
+          clientPrice:
+            clientPrice,
 
-        status:
-          "nouvelle",
+          // -------------------------------
+          // أجر الموظف
+          // -------------------------------
 
-        assignedAt:
-          servicesClient.datePayement,
+          employeePrice:
+            employeePrice,
 
-        dueDate:
-          servicesClient.datePayement,
+          // -------------------------------
+          // الموظف
+          // لا يوجد موظف بعد
+          // -------------------------------
 
-        paymentMethod:
-          servicesClient.paymentMethod?._id,
+          employee:
+            null,
 
-        notes:
-          "",
+          // -------------------------------
+          // من أنشأ المهمة
+          // -------------------------------
 
-        isRecurring:
-          service.isRecurring,
+          createdBy:
+            servicesClient.createdBy,
 
-        recurrence:
-          service.isRecurring
-            ? service.recurrence
-            : null,
+          // -------------------------------
+          // تاريخ الاستحقاق
+          // -------------------------------
 
-        recurringActive:
-          service.isRecurring
-            ? true
-            : false,
+          dueDate:
+            servicesClient.datePayement,
 
-        lastExecution:
-          servicesClient.datePayement,
+          // -------------------------------
+          // الحالة
+          // -------------------------------
 
-        nextExecution:
-          null,
-      });
+          status:
+            "nouvelle",
 
+          // -------------------------------
+          // الملاحظات
+          // -------------------------------
+
+          notes:
+            "",
+
+          // -------------------------------
+          // هل المهمة دورية؟
+          // -------------------------------
+
+          isRecurring:
+            service.isRecurring,
+
+          // -------------------------------
+          // نوع الدورية
+          // -------------------------------
+
+          recurrence:
+            service.isRecurring
+              ? service.recurrence
+              : null,
+
+          // -------------------------------
+          // هل الدورية فعالة؟
+          // -------------------------------
+
+          recurringActive:
+            service.isRecurring,
+
+          // -------------------------------
+          // آخر تنفيذ
+          // -------------------------------
+
+          lastExecution:
+            servicesClient.datePayement,
+
+          // -------------------------------
+          // التنفيذ القادم
+          // -------------------------------
+
+          nextExecution:
+            nextExecution,
+
+          // -------------------------------
+          // تاريخ الإسناد
+          // لا يوجد موظف بعد
+          // -------------------------------
+
+          assignedAt:
+            null,
+
+          // -------------------------------
+          // طريقة الدفع
+          // -------------------------------
+
+          paymentMethod:
+            paymentMethod._id,
+
+          // -------------------------------
+          // تاريخ الإنهاء
+          // -------------------------------
+
+          completedAt:
+            null,
+        });
 
       createdTasks.push(task);
-
 
       console.log(
         "✅ TASK CREATED:",
         task._id
       );
 
-
       // ========================================
       // الخدمة الدورية
       // ========================================
 
-      if (service.isRecurring) {
-
-        const nextDate =
-          calculateNextDate(
-            servicesClient.datePayement,
-            service.recurrence
-          );
-
-
+      if (
+        service.isRecurring &&
+        service.recurrence
+      ) {
         servicesClient.datePayement =
-          nextDate;
-
+          nextExecution!;
 
         await servicesClient.save();
-
 
         console.log(
           "🔄 RECURRING SERVICE"
         );
 
         console.log(
+          "📅 CURRENT DATE:",
+          servicesClient.datePayement
+        );
+
+        console.log(
           "📅 NEXT DATE:",
-          nextDate
+          nextExecution
         );
       }
-
 
       // ========================================
       // الخدمة غير الدورية
       // ========================================
 
       else {
-
         servicesClient.active =
           false;
 
-
         await servicesClient.save();
-
 
         console.log(
           "⛔ ONE TIME SERVICE DISABLED"
@@ -250,51 +459,47 @@ async function processServices() {
       }
     }
 
-
     // ========================================
     // النتيجة
     // ========================================
 
     console.log("================================");
+
     console.log(
       "✅ PROCESS FINISHED"
     );
+
     console.log(
       "✅ CREATED TASKS:",
       createdTasks.length
     );
+
     console.log("================================");
 
-
     return NextResponse.json({
-
       success: true,
 
       message:
         "Traitement terminé avec succès",
 
       createdTasks,
-
     });
 
-
   } catch (error) {
-
     console.error(
       "❌ PROCESS ERROR:",
       error
     );
 
-
     return NextResponse.json(
-
       {
         success: false,
 
         message:
-          "Erreur serveur",
+          error instanceof Error
+            ? error.message
+            : "Erreur serveur",
       },
-
       {
         status: 500,
       }
@@ -302,21 +507,29 @@ async function processServices() {
   }
 }
 
-
 // ========================================
 // حساب التاريخ القادم
 // ========================================
 
 function calculateNextDate(
   currentDate: Date,
-  recurrence: string | null
-) {
 
+  recurrence:
+    | "mensuel"
+    | "trimestriel"
+    | "semestriel"
+    | "annuel"
+    | "ponctuel"
+    | null
+): Date {
   const date =
     new Date(currentDate);
 
-
   switch (recurrence) {
+
+    // ====================================
+    // شهري
+    // ====================================
 
     case "mensuel":
 
@@ -326,6 +539,9 @@ function calculateNextDate(
 
       break;
 
+    // ====================================
+    // كل 3 أشهر
+    // ====================================
 
     case "trimestriel":
 
@@ -335,6 +551,9 @@ function calculateNextDate(
 
       break;
 
+    // ====================================
+    // كل 6 أشهر
+    // ====================================
 
     case "semestriel":
 
@@ -344,6 +563,9 @@ function calculateNextDate(
 
       break;
 
+    // ====================================
+    // سنوي
+    // ====================================
 
     case "annuel":
 
@@ -353,12 +575,23 @@ function calculateNextDate(
 
       break;
 
+    // ====================================
+    // ponctuel
+    // ====================================
+
+    case "ponctuel":
+
+      return currentDate;
+
+    // ====================================
+    // لا توجد دورية
+    // ====================================
 
     default:
 
       return currentDate;
   }
 
-
   return date;
 }
+
