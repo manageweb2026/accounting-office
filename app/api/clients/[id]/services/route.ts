@@ -1,3 +1,4 @@
+
 import { NextRequest, NextResponse } from "next/server";
 
 import dbConnect from "@/lib/mongodb";
@@ -25,10 +26,6 @@ export async function GET(
 
     const { id } = await params;
 
-    // ========================================
-    // التأكد من وجود الزبون
-    // ========================================
-
     const client = await Client.findById(id);
 
     if (!client) {
@@ -41,29 +38,42 @@ export async function GET(
       );
     }
 
-    // ========================================
-    // جلب الخدمات الخاصة بالزبون
-    // ========================================
-
-    const servicesClient = await ServicesClient.find({
-      client: id,
-    })
-      .populate(
-        "service",
-        "name clientPrice employeePrice isRecurring recurrence"
-      )
-      .populate(
-        "paymentMethod",
-        "name"
-      )
-      .sort({
-        createdAt: -1,
-      });
+    const servicesClient =
+      await ServicesClient.find({
+        client: id,
+      })
+        .populate(
+          "service",
+          `
+            name
+            description
+            direction
+            date_recurent
+            date_limite
+            Prix_Traitement_chifré
+            Prix_Traitement_néant
+            Prix_secretaireC
+            Prix_secretaireN
+            Prix_service_Agent
+            Prix_Agent
+            isRecurring
+            recurrence
+            isActive
+          `
+        )
+        .populate(
+          "paymentMethod",
+          "name"
+        )
+        .sort({
+          createdAt: -1,
+        });
 
     return NextResponse.json({
       success: true,
       services: servicesClient,
     });
+
   } catch (error) {
     console.error(
       "GET /api/clients/[id]/services error:",
@@ -82,7 +92,7 @@ export async function GET(
 
 // ========================================
 // POST
-// إضافة / تعديل خدمات الزبون
+// إضافة خدمات للزبون
 // ========================================
 
 export async function POST(
@@ -100,23 +110,26 @@ export async function POST(
     // المستخدم الحالي
     // ========================================
 
-    const user = await getCurrentUser(request);
+    const user =
+      await getCurrentUser(request);
 
     if (!user) {
       return NextResponse.json(
         {
           success: false,
-          message: "Utilisateur non autorisé",
+          message:
+            "Utilisateur non autorisé",
         },
         { status: 401 }
       );
     }
 
     // ========================================
-    // التأكد من وجود الزبون
+    // الزبون
     // ========================================
 
-    const client = await Client.findById(id);
+    const client =
+      await Client.findById(id);
 
     if (!client) {
       return NextResponse.json(
@@ -132,40 +145,47 @@ export async function POST(
     // الخدمات المختارة
     // ========================================
 
-    const selectedServices = Array.isArray(
-      body.services
-    )
-      ? body.services
-      : [];
+    const selectedServices =
+      Array.isArray(body.services)
+        ? body.services
+        : [];
 
-    // ========================================
-    // لا توجد خدمات
-    // ========================================
-
-    if (selectedServices.length === 0) {
+    if (
+      selectedServices.length === 0
+    ) {
       return NextResponse.json(
         {
           success: false,
-          message: "Aucun service sélectionné",
+          message:
+            "Aucun service sélectionné",
         },
         { status: 400 }
       );
     }
 
+    const assignedDates =
+      body.assignedDates || {};
+
+    const paymentMethods =
+      body.paymentMethods || {};
+
     const createdServices = [];
     const updatedServices = [];
 
     // ========================================
-    // معالجة كل خدمة
+    // معالجة الخدمات
     // ========================================
 
     for (const serviceId of selectedServices) {
+
       // ========================================
       // جلب الخدمة
       // ========================================
 
       const service =
-        await Service.findById(serviceId);
+        await Service.findById(
+          serviceId
+        );
 
       if (!service) {
         return NextResponse.json(
@@ -183,7 +203,7 @@ export async function POST(
       // ========================================
 
       const assignedDate =
-        body.assignedDates?.[serviceId];
+        assignedDates[serviceId];
 
       if (!assignedDate) {
         return NextResponse.json(
@@ -201,7 +221,7 @@ export async function POST(
       // ========================================
 
       const paymentMethodId =
-        body.paymentMethods?.[serviceId];
+        paymentMethods[serviceId];
 
       if (!paymentMethodId) {
         return NextResponse.json(
@@ -215,7 +235,7 @@ export async function POST(
       }
 
       // ========================================
-      // التأكد من وجود طريقة الدفع
+      // التأكد من طريقة الدفع
       // ========================================
 
       const paymentMethod =
@@ -235,32 +255,7 @@ export async function POST(
       }
 
       // ========================================
-      // حساب سعر العميل
-      // ========================================
-
-      let clientPrice =
-        service.clientPrice;
-
-      /*
-       * إذا كانت طريقة الدفع CCP
-       *
-       * الحساب:
-       *
-       * (clientPrice / 5000) * 12 + 18
-       */
-
-      if (
-        paymentMethod.name
-          ?.toString()
-          .trim()
-          .toUpperCase() === "CCP"
-      ) {
-        clientPrice =
-          (service.clientPrice / 5000) * 12 + 18;
-      }
-
-      // ========================================
-      // تحويل التاريخ بدون مشكلة timezone
+      // تحويل التاريخ
       // ========================================
 
       const [
@@ -271,16 +266,17 @@ export async function POST(
         .split("-")
         .map(Number);
 
-      const datePayement = new Date(
-        Date.UTC(
-          year,
-          month - 1,
-          day
-        )
-      );
+      const datePayement =
+        new Date(
+          Date.UTC(
+            year,
+            month - 1,
+            day
+          )
+        );
 
       // ========================================
-      // البحث عن الخدمة الموجودة مسبقًا
+      // البحث عن الخدمة للزبون
       // ========================================
 
       const existingService =
@@ -290,28 +286,26 @@ export async function POST(
         });
 
       // ========================================
-      // الخدمة موجودة مسبقًا
+      // الخدمة موجودة
       // ========================================
 
       if (existingService) {
-        // إعادة التفعيل
-        existingService.active = true;
 
-        // تحديث التاريخ
+        existingService.active =
+          true;
+
         existingService.datePayement =
           datePayement;
 
-        // تحديث طريقة الدفع
         existingService.paymentMethod =
           paymentMethodId;
 
-        // تحديث سعر العميل
+        // الأسعار مؤقتًا
         existingService.clientPrice =
-          clientPrice;
+          0;
 
-        // تحديث سعر الموظف
         existingService.employeePrice =
-          service.employeePrice;
+          0;
 
         await existingService.save();
 
@@ -328,18 +322,17 @@ export async function POST(
 
       const newService =
         await ServicesClient.create({
+
           client: id,
 
           service: serviceId,
 
-          clientPrice:
-            clientPrice,
+          // مؤقتًا بدون حساب أسعار
+          clientPrice: 0,
 
-          employeePrice:
-            service.employeePrice,
+          employeePrice: 0,
 
-          createdBy:
-            user.id,
+          createdBy: user.id,
 
           datePayement,
 
@@ -368,7 +361,9 @@ export async function POST(
 
       updatedServices,
     });
+
   } catch (error) {
+
     console.error(
       "POST /api/clients/[id]/services error:",
       error
@@ -377,7 +372,10 @@ export async function POST(
     return NextResponse.json(
       {
         success: false,
-        message: "Erreur serveur",
+        message:
+          error instanceof Error
+            ? error.message
+            : "Erreur serveur",
       },
       { status: 500 }
     );
