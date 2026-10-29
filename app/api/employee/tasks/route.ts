@@ -75,7 +75,9 @@ export async function GET() {
     await dbConnect();
 
    const tasks = await Task.find({
+   sentToEmployee: true,
   status: "nouvelle",
+  employee: null,
 })
   .populate(
     "client",

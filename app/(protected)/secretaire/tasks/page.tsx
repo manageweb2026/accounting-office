@@ -30,6 +30,7 @@ type Task = {
 
   clientPrice: number;
   employeePrice: number;
+  sentToEmployee?: boolean;
 
   status: string;
 
@@ -158,6 +159,40 @@ export default function TasksPage() {
       alert("Erreur serveur");
     }
   }
+
+
+
+  // ==========================================
+  // Envoyer la tâche à l'employé
+  // ==========================================
+
+
+async function sendTaskToEmployee(taskId: string) {
+  try {
+    const res = await fetch(`/api/tasks/${taskId}/send`, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+      },
+    });
+
+    const data = await res.json();
+
+    if (!res.ok || !data.success) {
+      alert(data.message || "Erreur lors de l'envoi à l'employé");
+      return;
+    }
+
+    alert("تم إرسال المهمة إلى الموظف بنجاح");
+
+    await loadTasks();
+  } catch (error) {
+    console.error("Erreur sendTaskToEmployee:", error);
+    alert("حدث خطأ أثناء إرسال المهمة");
+  }
+}
+
+
 
   // ==========================================
   // Charger les tâches
@@ -380,6 +415,8 @@ export default function TasksPage() {
               : "bg-white hover:bg-gray-100"
           }`}
         >
+
+          
           <div className="text-lg font-semibold">
             ❌ Annulées
           </div>
@@ -534,6 +571,20 @@ export default function TasksPage() {
                       >
                         Annuler
                       </button>
+
+                    {!task.sentToEmployee ? (
+  <button
+    type="button"
+    onClick={() => sendTaskToEmployee(task._id)}
+    className="bg-green-600 text-white px-3 py-1 rounded"
+  >
+    Envoyer à l’employé
+  </button>
+) : (
+  <span className="text-green-600">
+    Envoyée à l’employé
+  </span>
+)}
                     </div>
                   ) : task.status === "annulee" ? (
                     /* Tâche annulée */

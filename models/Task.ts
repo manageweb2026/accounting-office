@@ -130,6 +130,13 @@ nextExecution: {
       type: Date,
       default: null,
     },
+
+
+  sentToEmployee: {
+  type: Boolean,
+  default: false,
+},
+
   },
   {
     timestamps: true,
