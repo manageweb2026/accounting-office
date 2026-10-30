@@ -7,7 +7,6 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from "@/components/ui/dialog";
 
 type Task = {
@@ -28,8 +27,15 @@ type Task = {
     lastName: string;
   } | null;
 
-  clientPrice: number;
-  employeePrice: number;
+   assiette: number;
+  montant: number;
+
+  paymentMethod?: {
+  _id: string;
+  name: string;
+} | string | null;
+
+
   sentToEmployee?: boolean;
 
   status: string;
@@ -41,6 +47,16 @@ export default function TasksPage() {
   const [tasks, setTasks] = useState<Task[]>([]);
 
   const [open, setOpen] = useState(false);
+
+  const [selectedTask, setSelectedTask] = useState<Task | null>(null);
+
+const [editForm, setEditForm] = useState({
+  assiette: 0,
+  montant: 0,
+  paymentMethod: "",
+});
+
+const [saving, setSaving] = useState(false);
 
   // Section affichée par le secrétaire
   const [activeSection, setActiveSection] = useState<
@@ -57,6 +73,11 @@ export default function TasksPage() {
     new Date().getFullYear()
   );
 
+  const [paymentMethods, setPaymentMethods] = useState<
+  { _id: string; name: string }[]
+>([]);
+
+
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
 
@@ -64,17 +85,102 @@ export default function TasksPage() {
   // Chargement des tâches
   // ==========================================
 
-  useEffect(() => {
-    loadTasks();
-  }, []);
+ useEffect(() => {
+  loadTasks();
+  loadPaymentMethods();
+}, []);
 
+  async function loadPaymentMethods() {
+  try {
+    const res = await fetch("/api/payment-methods");
+    const data = await res.json();
+
+    if (data.success) {
+      setPaymentMethods(data.paymentMethods);
+    }
+  } catch (error) {
+    console.error("Erreur chargement modes de paiement:", error);
+  }
+}
   // ==========================================
   // Modification de la tâche
   // ==========================================
 
-  function handleEdit(task: Task) {
-    console.log("Modification de la tâche :", task);
+ function handleEdit(task: Task) {
+  setSelectedTask(task);
+
+  setEditForm({
+    assiette: task.assiette ?? 0,
+    montant: task.montant ?? 0,
+
+    paymentMethod:
+      typeof task.paymentMethod === "object" &&
+      task.paymentMethod !== null
+        ? task.paymentMethod._id
+        : task.paymentMethod || "",
+  });
+
+  setOpen(true);
+}
+
+async function handleUpdateTask(e: React.FormEvent) {
+  e.preventDefault();
+
+  if (!selectedTask) return;
+
+  if (!editForm.paymentMethod) {
+    alert("Veuillez sélectionner un mode de paiement");
+    return;
   }
+
+  const assiette = Number(editForm.assiette);
+  const montant = Number(editForm.montant);
+
+  if (!Number.isFinite(assiette) || assiette < 0) {
+    alert("Veuillez saisir une assiette valide (valeur positive ou nulle)");
+    return;
+  }
+
+  if (!Number.isFinite(montant) || montant < 0) {
+    alert("Veuillez saisir un montant valide (valeur positive ou nulle)");
+    return;
+  }
+
+  try {
+    setSaving(true);
+
+    const res = await fetch(`/api/tasks/${selectedTask._id}`, {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        assiette,
+        montant,
+        paymentMethod: editForm.paymentMethod,
+      }),
+    });
+
+    const data = await res.json();
+
+    if (!res.ok || !data.success) {
+      alert(data.message || "Erreur lors de la modification");
+      return;
+    }
+
+    alert("La tâche a été modifiée avec succès");
+
+    setOpen(false);
+    setSelectedTask(null);
+
+    await loadTasks();
+  } catch (error) {
+    console.error("Erreur modification:", error);
+    alert("Erreur serveur");
+  } finally {
+    setSaving(false);
+  }
+}
 
   // ==========================================
   // Annulation de la tâche
@@ -183,12 +289,11 @@ async function sendTaskToEmployee(taskId: string) {
       return;
     }
 
-    alert("تم إرسال المهمة إلى الموظف بنجاح");
-
+    alert("La tâche a été envoyée à l'employé avec succès");
     await loadTasks();
   } catch (error) {
     console.error("Erreur sendTaskToEmployee:", error);
-    alert("حدث خطأ أثناء إرسال المهمة");
+    alert("Erreur lors de l'envoi à l'employé");
   }
 }
 
@@ -284,19 +389,154 @@ async function sendTaskToEmployee(taskId: string) {
             Dialog création tâche
         ==================================== */}
 
-        <Dialog open={open} onOpenChange={setOpen}>
-          <DialogTrigger asChild>
-            {/* Bouton de création à ajouter plus tard */}
-          </DialogTrigger>
+    <Dialog open={open} onOpenChange={setOpen}>
 
-          <DialogContent className="max-w-2xl">
-            <DialogHeader>
-              <DialogTitle>
-                Nouvelle tâche
-              </DialogTitle>
-            </DialogHeader>
-          </DialogContent>
-        </Dialog>
+  <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+
+    <DialogHeader>
+      <DialogTitle className="text-xl font-bold">
+        Modifier la tâche
+      </DialogTitle>
+    </DialogHeader>
+
+    {selectedTask && (
+      <form
+        onSubmit={handleUpdateTask}
+        className="space-y-5 mt-4"
+      >
+
+        {/* Client */}
+        <div>
+          <label className="block text-sm font-medium mb-2">
+            Client
+          </label>
+
+          <input
+            type="text"
+            disabled
+            value={
+              selectedTask.client
+                ? `${selectedTask.client.firstName} ${selectedTask.client.lastName}`
+                : "Client supprimé"
+            }
+            className="w-full border rounded-lg p-2 bg-gray-100"
+          />
+        </div>
+
+        {/* Service */}
+        <div>
+          <label className="block text-sm font-medium mb-2">
+            Service
+          </label>
+
+          <input
+            type="text"
+            disabled
+            value={selectedTask.service?.name || "Service supprimé"}
+            className="w-full border rounded-lg p-2 bg-gray-100"
+          />
+        </div>
+
+        {/* Date limite */}
+       <div className="space-y-4">
+
+  {/* Assiette */}
+  <div>
+    <label className="block text-sm font-medium mb-2">
+      Assiette (DA)
+    </label>
+
+    <input
+      type="number"
+      min="0"
+      step="any"
+      value={editForm.assiette}
+      onChange={(e) =>
+        setEditForm({
+          ...editForm,
+          assiette: Number(e.target.value),
+        })
+      }
+      className="w-full border rounded-lg p-2"
+    />
+  </div>
+
+  {/* Montant */}
+  <div>
+    <label className="block text-sm font-medium mb-2">
+      Montant (DA)
+    </label>
+
+    <input
+      type="number"
+      min="0"
+      step="any"
+      value={editForm.montant}
+      onChange={(e) =>
+        setEditForm({
+          ...editForm,
+          montant: Number(e.target.value),
+        })
+      }
+      className="w-full border rounded-lg p-2"
+    />
+  </div>
+
+  {/* Mode de paiement */}
+  <div>
+    <label className="block text-sm font-medium mb-2">
+      Méthode de paiement
+    </label>
+
+    <select
+      value={editForm.paymentMethod}
+      onChange={(e) =>
+        setEditForm({
+          ...editForm,
+          paymentMethod: e.target.value,
+        })
+      }
+      required
+      className="w-full border rounded-lg p-2 bg-white"
+    >
+      <option value="">Sélectionner un mode de paiement</option>
+
+      {paymentMethods.map((method) => (
+        <option key={method._id} value={method._id}>
+          {method.name}
+        </option>
+      ))}
+    </select>
+  </div>
+
+</div>
+
+        {/* Boutons */}
+        <div className="flex justify-end gap-3 pt-4">
+
+          <button
+            type="button"
+            onClick={() => setOpen(false)}
+            className="px-4 py-2 border rounded-lg hover:bg-gray-100"
+          >
+            Annuler
+          </button>
+
+          <button
+            type="submit"
+            disabled={saving}
+            className="px-5 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
+          >
+            {saving ? "Enregistrement..." : "Enregistrer les modifications"}
+          </button>
+
+        </div>
+
+      </form>
+    )}
+
+  </DialogContent>
+</Dialog>
       </div>
 
       {/* ======================================
@@ -493,9 +733,7 @@ async function sendTaskToEmployee(taskId: string) {
               Service
             </th>
 
-            <th className="border p-3">
-              Prix
-            </th>
+           
 
             <th className="border p-3">
               Date limite
@@ -538,10 +776,7 @@ async function sendTaskToEmployee(taskId: string) {
                     : "Service supprimé"}
                 </td>
 
-                {/* Prix */}
-                <td className="border p-3">
-                  {task.clientPrice} DA
-                </td>
+              
 
                 {/* Date limite */}
                 <td className="border p-3">
@@ -563,7 +798,32 @@ async function sendTaskToEmployee(taskId: string) {
                   {task.status === "nouvelle" &&
                   !task.employee ? (
                     <div className="flex gap-2">
-                      <button
+                     
+
+                      
+<button
+  type="button"
+  onClick={() => handleEdit(task)}
+  className="bg-amber-500 text-white px-3 py-1 rounded hover:bg-amber-600"
+>
+  Modifier
+</button>
+
+                    {!task.sentToEmployee ? (
+  <button
+    type="button"
+    onClick={() => sendTaskToEmployee(task._id)}
+    className="bg-green-600 text-white px-3 py-1 rounded"
+  >
+    Envoyer à l’agent
+  </button>
+) : (
+  <span className="text-green-600">
+    Envoyée à l’agent
+  </span>
+)}
+
+ <button
                         className="px-3 py-1 bg-red-500 text-white rounded"
                         onClick={() =>
                           handleCancel(task._id)
@@ -572,19 +832,6 @@ async function sendTaskToEmployee(taskId: string) {
                         Annuler
                       </button>
 
-                    {!task.sentToEmployee ? (
-  <button
-    type="button"
-    onClick={() => sendTaskToEmployee(task._id)}
-    className="bg-green-600 text-white px-3 py-1 rounded"
-  >
-    Envoyer à l’employé
-  </button>
-) : (
-  <span className="text-green-600">
-    Envoyée à l’employé
-  </span>
-)}
                     </div>
                   ) : task.status === "annulee" ? (
                     /* Tâche annulée */

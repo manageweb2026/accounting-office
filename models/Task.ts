@@ -124,6 +124,19 @@ nextExecution: {
 },
 
 
+ assiette: {
+  type: Number,
+  required: true,
+  default: 0,
+},
+
+montant: {
+  type: Number,
+  required: true,
+  default: 0,
+},
+
+
 
     // تاريخ إنهاء المهمة
     completedAt: {
